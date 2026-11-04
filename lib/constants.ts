@@ -59,3 +59,6 @@ export const COOKIE_NAME = 'kharcha_guest_token';
 export const COOKIE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60; // 1 year
 export const TIMEZONE = 'Asia/Kolkata'; // Fixed IST for v1
 
+export const MAX_RAW_TEXT = 500;
+export const MAX_AMOUNT_RUPEES = 10_000_000; // 1 crore
+
