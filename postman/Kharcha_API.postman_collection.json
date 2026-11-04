@@ -1,0 +1,357 @@
+{
+  "info": {
+    "name": "Kharcha Backend API",
+    "_postman_id": "kharcha-backend-v1",
+    "description": "Comprehensive Postman test collection for Kharcha Voice & Text Expense Tracker backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Auth & Session",
+      "item": [
+        {
+          "name": "POST /api/auth/guest (Initialize Session)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Status code is 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "pm.test('Returns valid user object', () => {",
+                  "  pm.expect(res.user).to.have.property('userId');",
+                  "  pm.environment.set('guestUserId', res.user.userId);",
+                  "  if (res.token) { pm.environment.set('authToken', res.token); }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/guest",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "guest"]
+            }
+          }
+        },
+        {
+          "name": "GET /api/me (Current User Profile)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Entries Logging & Parsing",
+      "item": [
+        {
+          "name": "POST /api/entries - Single Expense (500 chai pe cash se)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const uuid = 'client-' + Date.now() + '-' + Math.floor(Math.random() * 10000);",
+                  "pm.environment.set('currentClientId', uuid);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Status code is 201', () => pm.expect(pm.response.code).to.eq(201));",
+                  "pm.test('Single entry created with 50000 paise', () => {",
+                  "  pm.expect(res.entries).to.be.an('array').with.lengthOf(1);",
+                  "  pm.expect(res.entries[0].amount).to.eq(50000);",
+                  "  pm.expect(res.entries[0].mode).to.eq('cash');",
+                  "  pm.expect(res.entries[0].parseStatus).to.eq('ok');",
+                  "  pm.environment.set('testEntryId', res.entries[0]._id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{currentClientId}}\",\n  \"rawText\": \"500 chai pe cash se\",\n  \"source\": \"text\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entries"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/entries - Idempotency Re-send (Same clientId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Status code is 200 (Idempotent)', () => pm.expect(pm.response.code).to.eq(200));",
+                  "pm.test('Returns existing entry without duplicate creation', () => {",
+                  "  pm.expect(res.idempotent).to.be.true;",
+                  "  pm.expect(res.entries[0]._id).to.eq(pm.environment.get('testEntryId'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{currentClientId}}\",\n  \"rawText\": \"500 chai pe cash se\",\n  \"source\": \"text\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entries"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/entries - Multi-item Expense (chai 20 aur samosa 30)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"multi-{{$timestamp}}\",\n  \"rawText\": \"chai 20 aur samosa 30\",\n  \"source\": \"text\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entries"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/entries - Past Date & Hinglish (kal petrol 300 upi)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"kal-petrol-{{$timestamp}}\",\n  \"rawText\": \"kal petrol 300 upi\",\n  \"source\": \"voice\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entries"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/entries - Income (salary aayi 45000)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"income-{{$timestamp}}\",\n  \"rawText\": \"salary aayi 45000\",\n  \"source\": \"text\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entries"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/entries - Missing Amount Validation (kal chai pi)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('Status code is 422 Unprocessable Entity', () => pm.expect(pm.response.code).to.eq(422));",
+                  "pm.test('Returns MISSING_AMOUNT validation error with extracted data', () => {",
+                  "  pm.expect(res.error).to.eq('MISSING_AMOUNT');",
+                  "  pm.expect(res.missingFields).to.include('amount');",
+                  "  pm.expect(res.extracted).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"missing-amount-{{$timestamp}}\",\n  \"rawText\": \"kal chai pi\",\n  \"source\": \"text\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entries"]
+            }
+          }
+        },
+        {
+          "name": "POST /api/entries - Non-Transaction (aaj kuch kharch nahi hua)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"notx-{{$timestamp}}\",\n  \"rawText\": \"aaj kuch kharch nahi hua\",\n  \"source\": \"text\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entries"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Query, Edit & Delete",
+      "item": [
+        {
+          "name": "GET /api/entries (Paginated List)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/entries?limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entries"],
+              "query": [
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/entries/:id (Manual Edit)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 550,\n  \"note\": \"Updated note with samosa\",\n  \"category\": \"food\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/entries/{{testEntryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entries", "{{testEntryId}}"]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/entries/:id (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/entries/{{testEntryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "entries", "{{testEntryId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Aggregation Stats",
+      "item": [
+        {
+          "name": "GET /api/stats (This Month)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/stats?range=this_month",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stats"],
+              "query": [
+                { "key": "range", "value": "this_month" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/stats (Last 30 Days)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/stats?range=last_30_days",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stats"],
+              "query": [
+                { "key": "range", "value": "last_30_days" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
