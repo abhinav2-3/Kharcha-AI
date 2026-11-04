@@ -87,14 +87,13 @@ export default function Composer() {
             placeholder={ENGLISH_EXAMPLES[exIdx]}
             autoComplete="off"
             enterKeyHint="send"
-            className="min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-muted"
+            className="min-w-0 flex-1 border-none bg-transparent text-[16px] text-ink placeholder:text-muted outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
           />
 
           {nearLimit && (
             <span
-              className={`num text-[12px] font-medium ${
-                text.length >= MAX_RAW_TEXT ? 'text-danger' : 'text-muted'
-              }`}
+              className={`num text-[12px] font-medium ${text.length >= MAX_RAW_TEXT ? 'text-danger' : 'text-muted'
+                }`}
             >
               {text.length}/{MAX_RAW_TEXT}
             </span>

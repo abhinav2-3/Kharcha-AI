@@ -137,7 +137,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-:focus-visible {
+:focus-visible:not(input):not(textarea):not(select) {
   outline: 2px solid var(--s1);
   outline-offset: 2px;
 }
@@ -147,8 +147,15 @@ button {
 }
 
 input,
-select {
+select,
+textarea {
   font-family: inherit;
+  outline: none;
+}
+
+input:focus,
+input:focus-visible {
+  outline: none;
 }
 
 .composer-fade {
