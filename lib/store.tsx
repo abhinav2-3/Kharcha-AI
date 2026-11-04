@@ -27,6 +27,8 @@ interface Store {
   online: boolean;
   month: string;
   setMonth: (m: string) => void;
+  serverStats: any | null;
+  refreshStats: () => Promise<void>;
   add: (text: string, source: Source) => void;
   retry: (id: string) => void;
   update: (id: string, patch: Partial<Entry>) => void;
@@ -58,6 +60,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [month, setMonth] = useState(() => monthOf(todayIST()));
+  const [serverStats, setServerStats] = useState<any | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [navOnline, setNavOnline] = useState(true);
   const [draft, setDraft] = useState('');
@@ -100,6 +103,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  /* ---------- Reconciled Stats from Server ---------- */
+  const refreshStats = useCallback(async () => {
+    try {
+      const stats = await api.getStats({ month });
+      if (stats) setServerStats(stats);
+    } catch (err) {
+      console.warn('refreshStats error:', err);
+    }
+  }, [month]);
+
+  useEffect(() => {
+    refreshStats();
+  }, [refreshStats, entries]);
 
   /* ---------- Settings persistence ---------- */
   useEffect(() => {
@@ -216,13 +233,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             prev.map((x) => (x.clientId === e.clientId ? tempFailedEntry : x))
           );
 
+          // Auto-open EntrySheet pre-filled with extracted details
+          setEditingId(e.clientId);
+
           toast({
             kind: 'warn',
             message: 'Amount was not specified. Please enter the amount.',
-            action: {
-              label: 'Add amount',
-              run: () => setEditingId(e.clientId),
-            },
           });
           return;
         }
@@ -308,17 +324,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   /* ---------- Edit & Delete ---------- */
   const update = useCallback((id: string, patch: Partial<Entry>) => {
     let targetMongoId: string | undefined;
+    let existingEntry: Entry | undefined;
+
     setEntries((prev) =>
       prev.map((e) => {
         if (e.clientId === id) {
           targetMongoId = e._id;
+          existingEntry = e;
           return { ...e, ...patch, parseStatus: 'manual', sync: 'synced' };
         }
         return e;
       })
     );
 
-    api.updateEntry(targetMongoId || id, patch);
+    const fullPatch = {
+      ...patch,
+      rawText: patch.rawText || existingEntry?.rawText,
+      source: patch.source || existingEntry?.source,
+    };
+
+    api.updateEntry(targetMongoId || id, fullPatch).then((updated) => {
+      if (updated?._id) {
+        setEntries((prev) =>
+          prev.map((e) => (e.clientId === id ? { ...e, _id: updated._id, sync: 'synced' } : e))
+        );
+      }
+    });
   }, []);
 
   const remove = useCallback(
@@ -330,7 +361,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toast({
         kind: 'info',
         message: 'Entry deleted',
-        action: { label: 'Undo', run: () => setEntries((prev) => [...prev, e]) },
+        action: {
+          label: 'Undo',
+          run: () => {
+            setEntries((prev) => [...prev, e]);
+            api.restoreEntry(e.clientId, e._id);
+          },
+        },
       });
     },
     [toast]
@@ -350,6 +387,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     online: navOnline,
     month,
     setMonth,
+    serverStats,
+    refreshStats,
     add,
     retry,
     update,

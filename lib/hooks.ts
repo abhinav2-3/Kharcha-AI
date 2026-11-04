@@ -44,6 +44,8 @@ export function useSpeech(opts: SpeechOptions) {
   const interimRef = useRef('');
   const erroredRef = useRef(false);
   const cancelledRef = useRef(false);
+  const optsRef = useRef(opts);
+  optsRef.current = opts;
   const onFinalRef = useRef(opts.onFinal);
   onFinalRef.current = opts.onFinal;
   const capRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,7 +81,7 @@ export function useSpeech(opts: SpeechOptions) {
     }
 
     const rec = new Rec();
-    rec.lang = opts.lang || 'en-IN';
+    rec.lang = optsRef.current.lang || 'en-IN';
     rec.interimResults = true;
     rec.continuous = false;
     rec.maxAlternatives = 1;

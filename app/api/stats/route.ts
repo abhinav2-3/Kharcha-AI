@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const range = searchParams.get('range') || 'this_month'; // 'this_month' | 'last_30_days' | 'all'
+    const monthParam = searchParams.get('month'); // YYYY-MM
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
 
@@ -23,7 +24,10 @@ export async function GET(request: NextRequest) {
     let fromDateStr: string | null = fromParam;
     let toDateStr: string | null = toParam || todayStr;
 
-    if (!fromParam) {
+    if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+      fromDateStr = `${monthParam}-01`;
+      toDateStr = `${monthParam}-31`;
+    } else if (!fromParam) {
       if (range === 'this_month') {
         // First day of current month: YYYY-MM-01
         fromDateStr = `${todayStr.slice(0, 7)}-01`;

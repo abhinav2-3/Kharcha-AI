@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Check,
   Copy,
@@ -11,6 +11,7 @@ import {
   Table2,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
+import { fetchMe } from '@/lib/api';
 import type { ReactNode } from 'react';
 
 function Row({
@@ -64,15 +65,32 @@ function Segmented<T extends string>({
 
 export default function SettingsPage() {
   const { settings, setSettings, reload, toast } = useStore();
+  const [profile, setProfile] = useState<{ userId: string } | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const [showCode, setShowCode] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Recovery code format
-  const RECOVERY_CODE = 'KHARCHA-7K2M-9XPQ';
+  useEffect(() => {
+    let active = true;
+    fetchMe().then((p) => {
+      if (active) {
+        setProfile(p);
+        setLoadingProfile(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Format recovery code: KHARCHA-<first 8 chars of userId in uppercase>
+  const rawId = profile?.userId || '';
+  const cleanIdPart = rawId.replace(/-/g, '').slice(0, 8).toUpperCase();
+  const recoveryCode = rawId ? `KHARCHA-${cleanIdPart}` : 'KHARCHA-INITIAL';
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(RECOVERY_CODE);
+      await navigator.clipboard.writeText(recoveryCode);
       setCopied(true);
       toast({ kind: 'success', message: 'Recovery code copied to clipboard!' });
       setTimeout(() => setCopied(false), 2500);
@@ -102,7 +120,7 @@ export default function SettingsPage() {
 
         <div className="mt-4 flex items-center gap-2 rounded-xl bg-surface px-4 py-3 shadow-inner">
           <code className="num flex-1 text-[17px] font-bold tracking-[0.08em] text-ink">
-            {showCode ? RECOVERY_CODE : 'KHARCHA-••••-••••'}
+            {showCode ? (loadingProfile ? 'Loading...' : recoveryCode) : 'KHARCHA-••••-••••'}
           </code>
           <button
             aria-label={showCode ? 'Hide code' : 'Show code'}

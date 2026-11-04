@@ -46,6 +46,20 @@ async function runEndToEndVerification() {
     category: 'food',
   });
   assert(validUpdate.success, 'Valid update payload accepted');
+
+  const validRestore = UpdateEntryInputSchema.safeParse({
+    restore: true,
+  });
+  assert(validRestore.success, 'Restore payload accepted');
+
+  const validManualUpsert = UpdateEntryInputSchema.safeParse({
+    amount: 150,
+    rawText: 'coffee with cash',
+    source: 'voice',
+    category: 'food',
+    mode: 'cash',
+  });
+  assert(validManualUpsert.success, 'Manual upsert payload accepted');
   console.log('✓ Validation schema tests passed.\n');
 
   // 3. AI Parser Schema & Fallback

@@ -164,9 +164,39 @@ export async function createEntries(payload: {
 }
 
 /**
+ * Fetches current authenticated user profile.
+ */
+export async function fetchMe(): Promise<{ userId: string; lastSeenAt?: string; createdAt?: string } | null> {
+  try {
+    let res = await fetch('/api/me', {
+      method: 'GET',
+      credentials: 'include',
+    });
+
+    if (res.status === 401) {
+      await ensureAuth();
+      res = await fetch('/api/me', {
+        method: 'GET',
+        credentials: 'include',
+      });
+    }
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.user || null;
+  } catch (err) {
+    console.error('fetchMe error:', err);
+    return null;
+  }
+}
+
+/**
  * Updates an entry in the backend.
  */
-export async function updateEntry(idOrClientId: string, patch: Partial<Entry>): Promise<void> {
+export async function updateEntry(
+  idOrClientId: string,
+  patch: Partial<Entry> & { restore?: boolean }
+): Promise<Entry | null> {
   try {
     const body: Record<string, any> = {};
     if (patch.amount !== undefined) body.amountPaise = patch.amount;
@@ -177,8 +207,11 @@ export async function updateEntry(idOrClientId: string, patch: Partial<Entry>): 
     if (patch.note !== undefined) body.note = patch.note;
     if (patch.spentAt !== undefined) body.spentAt = patch.spentAt;
     if (patch.spentOn !== undefined) body.spentOn = patch.spentOn;
+    if (patch.rawText !== undefined) body.rawText = patch.rawText;
+    if (patch.source !== undefined) body.source = patch.source;
+    if (patch.restore !== undefined) body.restore = patch.restore;
 
-    // Use Mongo _id if present, otherwise fetch or pass
+    // Use Mongo _id if present, otherwise clientId
     const targetId = (patch as any)._id || idOrClientId;
     const res = await fetch(`/api/entries/${targetId}`, {
       method: 'PATCH',
@@ -190,8 +223,32 @@ export async function updateEntry(idOrClientId: string, patch: Partial<Entry>): 
     if (!res.ok) {
       throw new Error(`Update failed: ${res.statusText}`);
     }
+
+    const json = await res.json();
+    if (json.entry) {
+      const e = json.entry;
+      return {
+        _id: e._id,
+        clientId: e.clientId,
+        rawText: e.rawText,
+        source: e.source,
+        amount: e.amount,
+        type: e.type,
+        category: e.category,
+        categoryHint: e.categoryHint,
+        mode: e.mode,
+        note: e.note,
+        spentAt: typeof e.spentAt === 'string' ? e.spentAt : new Date(e.spentAt).toISOString(),
+        spentOn: e.spentOn,
+        parseStatus: e.parseStatus,
+        createdAt: typeof e.createdAt === 'string' ? e.createdAt : new Date(e.createdAt).toISOString(),
+        sync: 'synced',
+      };
+    }
+    return null;
   } catch (err) {
     console.error('updateEntry error:', err);
+    return null;
   }
 }
 
@@ -215,11 +272,44 @@ export async function deleteEntry(idOrClientId: string, mongoId?: string): Promi
 }
 
 /**
+ * Restores a soft-deleted entry in the backend.
+ */
+export async function restoreEntry(idOrClientId: string, mongoId?: string): Promise<boolean> {
+  try {
+    const targetId = mongoId || idOrClientId;
+    const res = await fetch(`/api/entries/${targetId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ restore: true }),
+      credentials: 'include',
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('restoreEntry error:', err);
+    return false;
+  }
+}
+
+/**
  * Fetches calculated aggregation stats directly from MongoDB.
  */
-export async function getStats(range = 'this_month'): Promise<any> {
+export async function getStats(
+  queryParam?: string | { range?: string; month?: string; from?: string; to?: string }
+): Promise<any> {
   try {
-    const res = await fetch(`/api/stats?range=${range}`, {
+    let url = '/api/stats';
+    if (typeof queryParam === 'string') {
+      url += `?range=${encodeURIComponent(queryParam)}`;
+    } else if (queryParam) {
+      const params = new URLSearchParams();
+      if (queryParam.range) params.set('range', queryParam.range);
+      if (queryParam.month) params.set('month', queryParam.month);
+      if (queryParam.from) params.set('from', queryParam.from);
+      if (queryParam.to) params.set('to', queryParam.to);
+      url += `?${params.toString()}`;
+    }
+
+    const res = await fetch(url, {
       method: 'GET',
       credentials: 'include',
     });

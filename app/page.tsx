@@ -28,14 +28,22 @@ const ENGLISH_QUICK_CHIPS = [
 ];
 
 export default function HomePage() {
-  const { entries, sorted, loaded, month, setDraft } = useStore();
+  const { entries, sorted, loaded, month, setDraft, serverStats } = useStore();
   const today = todayIST();
   const isCurrent = month === monthOf(today);
   const upto = isCurrent ? dayOfMonth(today) : daysInMonth(month);
   const prevMonth = shiftMonth(month, -1);
 
   const m = useMemo(() => inMonth(entries, month), [entries, month]);
-  const { spent, income } = totals(m);
+  const localTotals = totals(m);
+
+  // Dual stats reconciliation: zero-latency optimistic local calculation,
+  // reconciled with server aggregation when server has more historical entries than loaded in memory
+  const isServerMonth = serverStats?.range?.from?.startsWith(month);
+  const serverHasMore = isServerMonth && (serverStats?.totals?.transactionCount ?? 0) > m.length;
+
+  const spent = serverHasMore ? serverStats.totals.expense.paise : localTotals.spent;
+  const income = serverHasMore ? serverStats.totals.income.paise : localTotals.income;
 
   const prevSoFar = useMemo(
     () =>
@@ -48,7 +56,21 @@ export default function HomePage() {
   const hasPrev = prevSoFar > 0;
   const delta = spent - prevSoFar;
   const daily = useMemo(() => byDay(m, month, upto), [m, month, upto]);
-  const cats = useMemo(() => byCategory(m), [m]);
+  const localCats = useMemo(() => byCategory(m), [m]);
+
+  const cats = useMemo(() => {
+    if (serverHasMore && serverStats?.byCategory?.length > 0) {
+      const expenseCats = serverStats.byCategory.filter((c: any) => c.type === 'expense');
+      const total = serverStats.totals?.expense?.paise || 1;
+      return expenseCats.map((c: any) => ({
+        category: c.category,
+        paise: c.totalPaise,
+        share: c.totalPaise / total,
+      }));
+    }
+    return localCats;
+  }, [serverHasMore, serverStats, localCats]);
+
   const hero = useCountUp(spent);
   const avg = upto ? Math.round(spent / upto / 100) * 100 : 0;
 

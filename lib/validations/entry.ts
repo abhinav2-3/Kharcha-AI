@@ -17,5 +17,8 @@ export const UpdateEntryInputSchema = z.object({
   note: z.string().max(100).nullable().optional(),
   spentAt: z.string().datetime().optional(),
   spentOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  rawText: z.string().max(500).optional(),
+  source: z.enum(SOURCES).optional(),
+  restore: z.boolean().optional(),
 });
 

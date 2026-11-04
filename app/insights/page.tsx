@@ -10,16 +10,34 @@ import ModeBar from '@/components/charts/ModeBar';
 import TrendChart from '@/components/charts/TrendChart';
 
 export default function InsightsPage() {
-  const { entries, loaded, month } = useStore();
+  const { entries, loaded, month, serverStats } = useStore();
   const prevMonth = shiftMonth(month, -1);
 
   const mCurrent = useMemo(() => inMonth(entries, month), [entries, month]);
   const mPrev = useMemo(() => inMonth(entries, prevMonth), [entries, prevMonth]);
 
-  const { spent: curSpent } = totals(mCurrent);
+  const { spent: localCurSpent } = totals(mCurrent);
   const { spent: prevSpent } = totals(mPrev);
 
-  const cats = useMemo(() => byCategory(mCurrent), [mCurrent]);
+  // Reconcile with server stats if server has more historical entries for this month
+  const isServerMonth = serverStats?.range?.from?.startsWith(month);
+  const serverHasMore = isServerMonth && (serverStats?.totals?.transactionCount ?? 0) > mCurrent.length;
+  const curSpent = serverHasMore ? serverStats.totals.expense.paise : localCurSpent;
+
+  const localCats = useMemo(() => byCategory(mCurrent), [mCurrent]);
+  const cats = useMemo(() => {
+    if (serverHasMore && serverStats?.byCategory?.length > 0) {
+      const expenseCats = serverStats.byCategory.filter((c: any) => c.type === 'expense');
+      const total = serverStats.totals?.expense?.paise || 1;
+      return expenseCats.map((c: any) => ({
+        category: c.category,
+        paise: c.totalPaise,
+        share: c.totalPaise / total,
+      }));
+    }
+    return localCats;
+  }, [serverHasMore, serverStats, localCats]);
+
   const modes = useMemo(() => byMode(mCurrent), [mCurrent]);
 
   const trendData = useMemo(() => {
