@@ -8,8 +8,8 @@ export const CreateEntryInputSchema = z.object({
 });
 
 export const UpdateEntryInputSchema = z.object({
-  amount: z.number().positive().optional(), // Amount in Rupees if provided in UI/Postman
-  amountPaise: z.number().int().positive().optional(), // Direct paise if provided
+  amount: z.number().positive().max(10_000_000, 'Amount cannot exceed ₹1,00,00,000').optional(), // Amount in Rupees
+  amountPaise: z.number().int().positive().max(1_000_000_000, 'Amount in paise cannot exceed ₹1,00,00,000').optional(), // Direct paise
   type: z.enum(ENTRY_TYPES).optional(),
   category: z.enum(ALL_CATEGORIES).optional(),
   categoryHint: z.string().max(100).nullable().optional(),

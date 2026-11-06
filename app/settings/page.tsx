@@ -104,35 +104,37 @@ export default function SettingsPage() {
       <h1 className="text-[26px] font-bold tracking-tight text-ink">Settings</h1>
 
       {/* Account Recovery Card */}
-      <section className="mt-6 rounded-2xl bg-accent-soft p-4 shadow-sm border border-accent/20">
+      <section className="mt-6 rounded-2xl border border-warn/30 bg-warn-bg/40 p-4.5 shadow-sm">
         <div className="flex items-start gap-3">
-          <ShieldAlert size={22} className="mt-0.5 shrink-0 text-accent-ink" />
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-warn-bg text-warn">
+            <ShieldAlert size={20} />
+          </span>
           <div>
-            <h2 className="text-[17px] font-semibold text-accent-ink">
+            <h2 className="text-[16px] font-semibold text-ink">
               Save your recovery code
             </h2>
-            <p className="mt-1 text-[13.5px] leading-relaxed text-accent-ink/80">
+            <p className="mt-1 text-[13.5px] leading-relaxed text-ink2">
               Your expenses are tied to this browser session. If you switch devices or clear
               browser history, this code restores your data.
             </p>
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-surface px-4 py-3 shadow-inner">
+        <div className="mt-4 flex items-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 shadow-xs">
           <code className="num flex-1 text-[17px] font-bold tracking-[0.08em] text-ink">
             {showCode ? (loadingProfile ? 'Loading...' : recoveryCode) : 'KHARCHA-••••-••••'}
           </code>
           <button
             aria-label={showCode ? 'Hide code' : 'Show code'}
             onClick={() => setShowCode((prev) => !prev)}
-            className="grid h-9 w-9 place-items-center rounded-full text-ink2 hover:bg-tint active:scale-95"
+            className="grid h-9 w-9 place-items-center rounded-full text-ink2 hover:bg-tint hover:text-ink active:scale-95 transition-colors"
           >
             {showCode ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
           <button
             aria-label="Copy recovery code"
             onClick={handleCopy}
-            className="grid h-9 w-9 place-items-center rounded-full text-ink2 hover:bg-tint active:scale-95"
+            className="grid h-9 w-9 place-items-center rounded-full text-ink2 hover:bg-tint hover:text-ink active:scale-95 transition-colors"
           >
             {copied ? <Check size={18} className="text-income" /> : <Copy size={18} />}
           </button>

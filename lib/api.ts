@@ -133,7 +133,13 @@ export async function createEntries(payload: {
 
     if (!res.ok) {
       if (res.status === 429) {
-        throw new ApiError('ratelimit', 'Too many requests. Please wait a moment.');
+        throw new ApiError('ratelimit', json.message || 'Too many requests. Please wait a moment.');
+      }
+      if (res.status === 400 && json.error === 'INVALID_INPUT') {
+        throw new ApiError('validation', json.message || 'Please enter a valid expense description.');
+      }
+      if (res.status === 503 || json.error === 'AI_UNAVAILABLE') {
+        throw new ApiError('server', json.message || 'AI service is temporarily busy. Please enter details manually.');
       }
       throw new ApiError('server', json.error || 'Server error while parsing expense.');
     }

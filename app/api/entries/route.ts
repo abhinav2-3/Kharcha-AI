@@ -4,6 +4,8 @@ import { Entry } from '@/models/Entry';
 import { getAuthUserId } from '@/lib/auth';
 import { CreateEntryInputSchema } from '@/lib/validations/entry';
 import { parse } from '@/lib/parser';
+import { validatePreLLMInput } from '@/lib/parser/filter';
+import { checkRateLimit, recordRateLimitHit } from '@/lib/ratelimit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,9 +27,23 @@ export async function POST(request: NextRequest) {
     }
 
     const { clientId, rawText, source } = validation.data;
+
+    // 1. Fast Pre-LLM Filter (Zero Token Cost Shield)
+    const preCheck = validatePreLLMInput(rawText);
+    if (!preCheck.valid) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'INVALID_INPUT',
+          message: preCheck.reason,
+        },
+        { status: 400 }
+      );
+    }
+
     await connectDB();
 
-    // 1. Idempotency Check: Return existing entry if same (userId, clientId) was already processed
+    // 2. Idempotency Check: Return existing entry if same (userId, clientId) was already processed
     const existing = await Entry.find({
       userId,
       $or: [
@@ -47,8 +63,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Parse text via AI Parser
+    // 3. Rate Limit Check (6 req/min, 50 req/day per user)
+    const rateLimitResult = await checkRateLimit(userId);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'RATE_LIMIT_EXCEEDED',
+          reason: rateLimitResult.reason,
+          message: rateLimitResult.message,
+          retryAfter: rateLimitResult.retryAfterSeconds,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimitResult.retryAfterSeconds || 30),
+          },
+        }
+      );
+    }
+
+    // 4. Parse text via AI Parser
     const parsedItems = await parse(rawText);
+
+    // Record AI consumption for quota tracking
+    await recordRateLimitHit(userId);
 
     // Non-transaction message (e.g., "aaj kuch kharch nahi hua")
     if (parsedItems.length === 0) {
@@ -124,11 +163,25 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in POST /api/entries:', error);
+    const isAiServiceError =
+      error?.status === 429 ||
+      error?.status === 503 ||
+      error?.name === 'AbortError' ||
+      error?.message?.includes('API_KEY') ||
+      error?.message?.includes('timeout') ||
+      error?.message?.includes('rate limit');
+
     return NextResponse.json(
-      { success: false, error: 'Internal Server Error' },
-      { status: 500 }
+      {
+        success: false,
+        error: isAiServiceError ? 'AI_UNAVAILABLE' : 'Internal Server Error',
+        message: isAiServiceError
+          ? 'AI parser is temporarily busy. Please enter details manually.'
+          : 'Internal Server Error',
+      },
+      { status: isAiServiceError ? 503 : 500 }
     );
   }
 }

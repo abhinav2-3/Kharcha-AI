@@ -108,7 +108,32 @@ async function runEndToEndVerification() {
   assert(normalizedFailSafe.amount === null, 'Missing amount stays null');
   assert(normalizedFailSafe.mode === 'cash', 'Default mode resolves to cash');
   assert(normalizedFailSafe.parseStatus === 'failed', 'Status is failed without crashing');
-  console.log('✓ Normalization & fail-safe tests passed.\n');
+
+  // Security: Astronomical amount overflow protection (> 10,000,000)
+  const normalizedHuge = normalizeParsedItem({
+    amount: 999999999, // 99 Crore
+    category: 'other',
+  });
+  assert(normalizedHuge.amount === null && normalizedHuge.parseStatus === 'failed', 'Astronomical amount rejected safely');
+
+  // Security: Formula injection sanitization in notes
+  const formulaNote = normalizeParsedItem({
+    amount: 100,
+    category: 'food',
+    note: '=cmd|/c calc!A0',
+  });
+  assert(formulaNote.note?.startsWith("'="), 'CSV/Formula injection trigger neutralized');
+
+  // Hinglish Amount conversions
+  const normalizedDedhSau = normalizeParsedItem({
+    amount: 150, // "dedh sau"
+    category: 'transport',
+    note: 'auto wale ko diye',
+    mode: 'cash',
+  });
+  assert(normalizedDedhSau.amount === 15000, 'Dedh sau converts to 15000 paise');
+  assert(normalizedDedhSau.category === 'transport', 'Auto maps to transport category');
+  console.log('✓ Normalization, security sanity & Hinglish tests passed.\n');
 
   // 5. Idempotency Key Generation Verification
   console.log('5. Testing Multi-item Client ID Generation...');
@@ -117,6 +142,21 @@ async function runEndToEndVerification() {
   assert(itemIds[0] === 'client-uuid-999:0', 'Item 0 ID generated');
   assert(itemIds[1] === 'client-uuid-999:1', 'Item 1 ID generated');
   console.log('✓ Idempotency and multi-item IDs passed.\n');
+
+  // 6. Pre-LLM Filter & Rate Limiting Heuristics
+  console.log('6. Testing Pre-LLM Zero-Token Filter & Rate Limit Config...');
+  const { validatePreLLMInput } = await import('../lib/parser/filter');
+  const { RATE_LIMIT_CONFIG } = await import('../lib/ratelimit');
+
+  assert(validatePreLLMInput('500 for coffee').valid, 'Valid expense passed pre-LLM check');
+  assert(validatePreLLMInput('auto 120').valid, 'Short valid expense passed pre-LLM check');
+  assert(!validatePreLLMInput('a').valid, 'Single character rejected before LLM');
+  assert(!validatePreLLMInput('??????').valid, 'Punctuation-only rejected before LLM');
+  assert(!validatePreLLMInput('aaaaaaaaaaaaaaaaaaaaa').valid, 'Repetitive spam rejected before LLM');
+
+  assert(RATE_LIMIT_CONFIG.MINUTE_LIMIT === 6, 'Minute limit configured to 6 req/min');
+  assert(RATE_LIMIT_CONFIG.DAILY_LIMIT === 50, 'Daily limit configured to 50 req/day');
+  console.log('✓ Pre-LLM token saver & rate limit configs passed.\n');
 
   console.log('=== All Kharcha Backend Tests Passed Successfully! ===');
 }

@@ -5,6 +5,7 @@ export const RawLLMItemSchema = z.object({
   amount: z
     .number()
     .positive()
+    .max(10_000_000)
     .nullable()
     .catch(null),
   type: z

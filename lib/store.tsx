@@ -243,6 +243,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        if (err?.kind === 'ratelimit') {
+          toast({
+            kind: 'warn',
+            message: err?.message || 'Rate limit reached. Please wait a moment.',
+            action: {
+              label: 'Add manually',
+              run: () => setEditingId(e.clientId),
+            },
+          });
+          return;
+        }
+
+        if (err?.kind === 'validation') {
+          setEntries((prev) => prev.filter((x) => x.clientId !== e.clientId));
+          toast({
+            kind: 'warn',
+            message: err?.message || 'Please enter a valid expense description.',
+          });
+          return;
+        }
+
         const isNetwork = err?.kind === 'network' || !navigator.onLine;
         const msg = isNetwork
           ? 'Offline / Waiting for network'

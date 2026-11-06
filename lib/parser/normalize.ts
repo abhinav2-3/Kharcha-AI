@@ -23,6 +23,19 @@ export function getISTDateString(date: Date = new Date()): string {
 }
 
 /**
+ * Sanitize text to prevent CSV/Formula injection and strip dangerous control characters.
+ */
+function sanitizeText(str: string | null | undefined): string | null {
+  if (!str) return null;
+  let clean = str.trim().slice(0, 100);
+  // Neutralize CSV / Excel formula injection triggers
+  if (/^[=+\-@\t\r]/.test(clean)) {
+    clean = `'${clean}`;
+  }
+  return clean;
+}
+
+/**
  * Normalizes a raw LLM extracted item into a verified, sanitized ParsedItem.
  */
 export function normalizeParsedItem(
@@ -31,11 +44,17 @@ export function normalizeParsedItem(
 ): ParsedItem {
   const todayISTStr = getISTDateString(referenceNow);
 
-  // 1. Amount & Parse Status
+  // 1. Amount & Parse Status with sanity bounds (₹0 to ₹1,00,00,000)
   let amountPaise: number | null = null;
   let parseStatus: ParsedItem['parseStatus'] = 'ok';
 
-  if (raw.amount !== null && raw.amount !== undefined && raw.amount > 0) {
+  if (
+    raw.amount !== null &&
+    raw.amount !== undefined &&
+    raw.amount > 0 &&
+    raw.amount <= 10_000_000 &&
+    Number.isFinite(raw.amount)
+  ) {
     amountPaise = Math.round(raw.amount * 100); // Convert Rupees to integer Paise
   } else {
     parseStatus = 'failed';
@@ -46,13 +65,13 @@ export function normalizeParsedItem(
 
   // 3. Category reconciliation
   let category = (raw.category || '').toLowerCase().trim();
-  let categoryHint = raw.categoryHint ? raw.categoryHint.trim().slice(0, 100) : null;
+  let categoryHint = sanitizeText(raw.categoryHint);
 
   if (type === 'expense') {
     const isKnownExpense = (EXPENSE_CATEGORIES as readonly string[]).includes(category);
     if (!isKnownExpense) {
       if (category && category !== 'other') {
-        categoryHint = categoryHint || category;
+        categoryHint = categoryHint || sanitizeText(category);
       }
       category = DEFAULT_EXPENSE_CATEGORY;
     }
@@ -61,7 +80,7 @@ export function normalizeParsedItem(
     const isKnownIncome = (INCOME_CATEGORIES as readonly string[]).includes(category);
     if (!isKnownIncome) {
       if (category && category !== 'other_income') {
-        categoryHint = categoryHint || category;
+        categoryHint = categoryHint || sanitizeText(category);
       }
       category = DEFAULT_INCOME_CATEGORY;
     }
@@ -97,8 +116,8 @@ export function normalizeParsedItem(
     mode = 'cash';
   }
 
-  // 6. Note
-  const note = raw.note ? raw.note.trim().slice(0, 100) : null;
+  // 6. Note (sanitized against formula injection)
+  const note = sanitizeText(raw.note);
 
   return {
     amount: amountPaise,

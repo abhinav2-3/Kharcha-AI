@@ -45,13 +45,50 @@ export async function parse(
     const provider = getLLMProvider(options?.providerName);
     const systemPrompt = buildParserSystemPrompt(refDate);
 
-    const jsonText = await provider.generateJSON(
-      [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: trimmed },
-      ],
-      { timeoutMs: options?.timeoutMs || 8000 }
-    );
+    // Sanitize user text to prevent tag breakouts & prompt injection escapes
+    const sanitizedInput = trimmed
+      .replace(/<\/?user_expense_input>/gi, '')
+      .slice(0, 500);
+
+    const userMessageContent = `<user_expense_input>\n${sanitizedInput}\n</user_expense_input>`;
+
+    let jsonText: string;
+    try {
+      jsonText = await provider.generateJSON(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessageContent },
+        ],
+        { timeoutMs: options?.timeoutMs || 8000 }
+      );
+    } catch (primaryErr) {
+      console.warn(`Primary LLM provider (${provider.name}) failed:`, primaryErr);
+
+      // Auto-failover: If primary is groq and GEMINI_API_KEY is available, try Gemini
+      if (provider.name === 'groq' && process.env.GEMINI_API_KEY) {
+        console.info('Attempting auto-failover to Gemini provider...');
+        const backupProvider = getLLMProvider('gemini');
+        jsonText = await backupProvider.generateJSON(
+          [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessageContent },
+          ],
+          { timeoutMs: options?.timeoutMs || 8000 }
+        );
+      } else if (provider.name === 'gemini' && process.env.GROQ_API_KEY) {
+        console.info('Attempting auto-failover to Groq provider...');
+        const backupProvider = getLLMProvider('groq');
+        jsonText = await backupProvider.generateJSON(
+          [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessageContent },
+          ],
+          { timeoutMs: options?.timeoutMs || 8000 }
+        );
+      } else {
+        throw primaryErr;
+      }
+    }
 
     // Parse returned JSON text
     let parsedJson: unknown;
