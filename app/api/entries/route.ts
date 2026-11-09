@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { clientId, rawText, source } = validation.data;
+    const { clientId, rawText, source, alternatives } = validation.data;
 
     // 1. Fast Pre-LLM Filter (Zero Token Cost Shield)
     const preCheck = validatePreLLMInput(rawText);
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Parse text via AI Parser
-    const parsedItems = await parse(rawText);
+    const parsedItems = await parse(rawText, { alternatives });
 
     // Record AI consumption for quota tracking
     await recordRateLimitHit(userId);

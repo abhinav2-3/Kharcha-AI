@@ -1,16 +1,17 @@
 'use client';
+import { useEffect, useState } from 'react';
 import { MicOff, Square, WifiOff } from 'lucide-react';
 import type { SpeechError } from '@/lib/hooks';
 
 const ERRORS: Record<SpeechError, { title: string; body: string; retry: boolean }> = {
   denied: {
     title: 'Microphone is blocked',
-    body: 'Allow microphone access for this website in your browser settings, then try again.',
-    retry: false,
+    body: 'Allow microphone access for Kharcha in your browser settings to speak expenses.',
+    retry: true,
   },
   'no-speech': {
     title: 'Didn’t catch that',
-    body: 'No speech was detected. Hold the device closer and speak clearly.',
+    body: 'No speech was detected. Hold the device closer and speak clearly in one go.',
     retry: true,
   },
   network: {
@@ -39,7 +40,8 @@ interface Props {
   listening: boolean;
   text: string;
   error: SpeechError | null;
-  lang: string;
+  lang: 'hi-IN' | 'en-IN';
+  onSelectLang: (lang: 'hi-IN' | 'en-IN') => void;
   onStop: () => void;
   onCancel: () => void;
   onRetry: () => void;
@@ -51,12 +53,24 @@ export default function ListeningSheet({
   text,
   error,
   lang,
+  onSelectLang,
   onStop,
   onCancel,
   onRetry,
   onType,
 }: Props) {
   const err = error ? ERRORS[error] : null;
+  const [showHint, setShowHint] = useState(false);
+
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem('kharcha.mic_hint_seen');
+      if (!seen) {
+        setShowHint(true);
+        localStorage.setItem('kharcha.mic_hint_seen', '1');
+      }
+    } catch {}
+  }, []);
 
   return (
     <div
@@ -81,6 +95,18 @@ export default function ListeningSheet({
             <p className="mt-1.5 max-w-[300px] text-[15px] leading-relaxed text-ink2">
               {err.body}
             </p>
+
+            {error === 'denied' && (
+              <div className="mt-4 w-full rounded-2xl bg-tint p-3.5 text-left text-[13px] leading-relaxed text-ink2">
+                <p className="font-semibold text-ink">To allow in Chrome:</p>
+                <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-ink2">
+                  <li>Tap the lock or site settings icon (🔒 / ⚙️) by the address bar.</li>
+                  <li>Set <strong>Microphone</strong> to <strong>Allow</strong>.</li>
+                  <li>Tap &ldquo;Try again&rdquo; or refresh the page.</li>
+                </ol>
+              </div>
+            )}
+
             <div className="mt-6 flex w-full gap-3">
               <button
                 onClick={onType}
@@ -100,14 +126,49 @@ export default function ListeningSheet({
           </div>
         ) : (
           <div className="flex flex-col items-center text-center">
-            <p className="text-[14px] font-medium text-ink2">Listening • English</p>
+            {showHint && (
+              <div className="mb-2 rounded-full bg-accent-soft px-3.5 py-1 text-[13px] font-medium text-accent-ink">
+                Speak close to the mic and say it in one go.
+              </div>
+            )}
+
+            {/* Compact language toggle chip ("हिं / EN") */}
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-[13px] font-medium text-ink2">
+                Listening • {lang === 'hi-IN' ? 'Hindi' : 'English'}
+              </span>
+              <div className="inline-flex rounded-full bg-tint p-0.5 border border-line/60">
+                <button
+                  type="button"
+                  onClick={() => onSelectLang('hi-IN')}
+                  className={`rounded-full px-2.5 py-0.5 text-[12px] font-semibold transition-all ${
+                    lang === 'hi-IN' ? 'bg-surface text-ink shadow-xs' : 'text-ink2 hover:text-ink'
+                  }`}
+                >
+                  हिं
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSelectLang('en-IN')}
+                  className={`rounded-full px-2.5 py-0.5 text-[12px] font-semibold transition-all ${
+                    lang === 'en-IN' ? 'bg-surface text-ink shadow-xs' : 'text-ink2 hover:text-ink'
+                  }`}
+                >
+                  EN
+                </button>
+              </div>
+            </div>
+
             <p
               aria-live="polite"
               className={`mt-3 flex min-h-[84px] items-center text-[22px] font-semibold leading-snug ${
                 text ? 'text-ink' : 'text-muted'
               }`}
             >
-              {text || 'Say "500 for coffee with cash"...'}
+              {text ||
+                (lang === 'hi-IN'
+                  ? 'बोलिए "500 chai pe cash se"...'
+                  : 'Say "500 for coffee with cash"...')}
             </p>
 
             <div className="mt-4 flex h-10 items-center gap-1.5" aria-hidden="true">

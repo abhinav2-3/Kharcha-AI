@@ -33,7 +33,7 @@ export type Filter =
   | { kind: 'category'; category: AnyCategory };
 
 export interface Settings {
-  lang: 'en-IN' | 'en-US';
+  lang: 'hi-IN' | 'en-IN';
   autoSend: boolean;
   theme: 'system' | 'light' | 'dark';
 }
@@ -43,4 +43,26 @@ export interface Toast {
   kind: 'success' | 'error' | 'info' | 'warn';
   message: string;
   action?: { label: string; run: () => void };
+}
+
+export type AuthOutcome = 'claimed' | 'logged_in' | 'created' | 'noop';
+
+export interface UserProfile {
+  userId: string;
+  isGuest: boolean;
+  email?: string;
+  name?: string;
+  picture?: string;
+  googleClientId?: string;
+  claimedAt?: string;
+  lastSeenAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface GoogleAuthResponse {
+  success: boolean;
+  user: UserProfile;
+  outcome: AuthOutcome;
+  mergedCount: number;
 }

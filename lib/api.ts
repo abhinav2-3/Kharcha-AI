@@ -1,4 +1,4 @@
-import type { Entry, Source } from './types';
+import type { Entry, GoogleAuthResponse, Source, UserProfile } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -105,6 +105,7 @@ export async function createEntries(payload: {
   clientId: string;
   rawText: string;
   source: Source;
+  alternatives?: string[];
 }): Promise<Entry[]> {
   try {
     const res = await fetch('/api/entries', {
@@ -172,7 +173,7 @@ export async function createEntries(payload: {
 /**
  * Fetches current authenticated user profile.
  */
-export async function fetchMe(): Promise<{ userId: string; lastSeenAt?: string; createdAt?: string } | null> {
+export async function fetchMe(): Promise<UserProfile | null> {
   try {
     let res = await fetch('/api/me', {
       method: 'GET',
@@ -189,10 +190,62 @@ export async function fetchMe(): Promise<{ userId: string; lastSeenAt?: string; 
 
     if (!res.ok) return null;
     const data = await res.json();
-    return data.user || null;
+    if (data?.user) {
+      data.user.googleClientId =
+        data.googleClientId || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+      return data.user;
+    }
+    return null;
   } catch (err) {
     console.error('fetchMe error:', err);
     return null;
+  }
+}
+
+/**
+ * Submits Google ID Token credential to /api/auth/google.
+ */
+export async function loginWithGoogle(credential: string): Promise<GoogleAuthResponse> {
+  try {
+    const res = await fetch('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential }),
+      credentials: 'include',
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      const errCode = data?.error || 'auth_failed';
+      const errMsg = data?.message || 'Google sign-in failed. Please try again.';
+      throw new ApiError('server', errMsg, { code: errCode });
+    }
+
+    return data;
+  } catch (err: any) {
+    if (err instanceof ApiError) throw err;
+    throw new ApiError('network', 'Could not complete Google sign-in. Check your connection.');
+  }
+}
+
+/**
+ * Logs out the current claimed account.
+ */
+export async function logoutUser(): Promise<void> {
+  try {
+    const res = await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new ApiError('server', data?.message || 'Failed to log out.');
+    }
+  } catch (err: any) {
+    if (err instanceof ApiError) throw err;
+    throw new ApiError('network', 'Network error during logout.');
   }
 }
 

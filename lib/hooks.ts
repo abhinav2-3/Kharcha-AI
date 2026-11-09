@@ -32,7 +32,7 @@ export type SpeechError = 'denied' | 'no-speech' | 'network' | 'no-mic' | 'unsup
 
 interface SpeechOptions {
   lang: string;
-  onFinal: (text: string) => void;
+  onFinal: (text: string, alternatives?: string[]) => void;
 }
 
 /**
@@ -40,8 +40,10 @@ interface SpeechOptions {
  */
 export function useSpeech(opts: SpeechOptions) {
   const recRef = useRef<any>(null);
+  const isActiveRef = useRef(false);
   const finalRef = useRef('');
   const interimRef = useRef('');
+  const alternativesRef = useRef<string[]>([]);
   const erroredRef = useRef(false);
   const cancelledRef = useRef(false);
   const optsRef = useRef(opts);
@@ -66,12 +68,16 @@ export function useSpeech(opts: SpeechOptions) {
   };
 
   const start = () => {
+    // Guard against starting a second recognition instance while active
+    if (isActiveRef.current) return;
+
     const w = typeof window !== 'undefined' ? (window as any) : {};
     const Rec = w.SpeechRecognition || w.webkitSpeechRecognition;
     setError(null);
     setText('');
     finalRef.current = '';
     interimRef.current = '';
+    alternativesRef.current = [];
     erroredRef.current = false;
     cancelledRef.current = false;
 
@@ -81,25 +87,49 @@ export function useSpeech(opts: SpeechOptions) {
     }
 
     const rec = new Rec();
-    rec.lang = optsRef.current.lang || 'en-IN';
+    rec.lang = optsRef.current.lang || 'hi-IN';
     rec.interimResults = true;
     rec.continuous = false;
-    rec.maxAlternatives = 1;
+    rec.maxAlternatives = 3;
 
     rec.onresult = (e: any) => {
       let fin = '';
       let interim = '';
+      const altLists: string[][] = [[], [], []];
+
       for (let i = 0; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) fin += r[0].transcript;
-        else interim += r[0].transcript;
+        const primaryText = r[0]?.transcript || '';
+
+        if (r.isFinal) {
+          fin += primaryText;
+          // Capture up to 3 candidate alternatives across final segments
+          for (let k = 0; k < 3; k++) {
+            const alt = r[k]?.transcript || primaryText;
+            if (alt) altLists[k].push(alt);
+          }
+        } else {
+          interim += primaryText;
+        }
       }
+
       finalRef.current = fin.trim();
       interimRef.current = (fin + interim).trim();
       setText(interimRef.current);
+
+      const mainCandidate = (finalRef.current || interimRef.current).trim();
+      const gathered: string[] = [];
+      for (let k = 1; k < 3; k++) {
+        const textCandidate = altLists[k].join(' ').trim();
+        if (textCandidate && textCandidate !== mainCandidate && !gathered.includes(textCandidate)) {
+          gathered.push(textCandidate);
+        }
+      }
+      alternativesRef.current = gathered;
     };
 
     rec.onerror = (e: any) => {
+      isActiveRef.current = false;
       if (cancelledRef.current) return;
       erroredRef.current = true;
       const code = e?.error as string;
@@ -121,23 +151,33 @@ export function useSpeech(opts: SpeechOptions) {
 
     rec.onend = () => {
       clearCap();
+      isActiveRef.current = false;
       setListening(false);
       if (cancelledRef.current || erroredRef.current) return;
       const t = (finalRef.current || interimRef.current).trim();
-      if (t) onFinalRef.current(t);
-      else setError('no-speech');
+      if (t) {
+        onFinalRef.current(t, alternativesRef.current);
+      } else {
+        setError('no-speech');
+      }
     };
 
     recRef.current = rec;
     try {
       rec.start();
+      isActiveRef.current = true;
       setListening(true);
     } catch {
+      isActiveRef.current = false;
       setError('unknown');
       return;
     }
 
-    capRef.current = setTimeout(() => rec.stop(), 20000); // 20s hard cap
+    capRef.current = setTimeout(() => {
+      try {
+        rec.stop();
+      } catch {}
+    }, 20000); // 20s hard cap
   };
 
   const stop = () => {
@@ -148,6 +188,7 @@ export function useSpeech(opts: SpeechOptions) {
 
   const cancel = () => {
     cancelledRef.current = true;
+    isActiveRef.current = false;
     clearCap();
     try {
       recRef.current?.abort();

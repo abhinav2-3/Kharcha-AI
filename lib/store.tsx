@@ -9,13 +9,13 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { Entry, Filter, Settings, Source, Toast } from './types';
+import type { Entry, Filter, GoogleAuthResponse, Settings, Source, Toast, UserProfile } from './types';
 import * as api from './api';
 import { monthOf, rupees, todayIST, uid } from './format';
-import { CATEGORY_META } from './meta';
+import { CATEGORY_META, MODE_META } from './meta';
 
 const DEFAULT_SETTINGS: Settings = {
-  lang: 'en-IN',
+  lang: 'hi-IN',
   autoSend: false,
   theme: 'system',
 };
@@ -29,7 +29,7 @@ interface Store {
   setMonth: (m: string) => void;
   serverStats: any | null;
   refreshStats: () => Promise<void>;
-  add: (text: string, source: Source) => void;
+  add: (text: string, source: Source, alternatives?: string[]) => void;
   retry: (id: string) => void;
   update: (id: string, patch: Partial<Entry>) => void;
   remove: (id: string) => void;
@@ -46,6 +46,13 @@ interface Store {
   setSettings: (p: Partial<Settings>) => void;
   clearAll: () => void;
   reload: () => void;
+  user: UserProfile | null;
+  loadingUser: boolean;
+  refreshUser: () => Promise<UserProfile | null>;
+  loginGoogle: (credential: string) => Promise<GoogleAuthResponse>;
+  logout: () => Promise<void>;
+  nudgeActive: boolean;
+  dismissNudge: () => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -67,10 +74,56 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>({ kind: 'all' });
   const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [nudgeActive, setNudgeActive] = useState(false);
 
   const entriesRef = useRef(entries);
   entriesRef.current = entries;
+  const userRef = useRef<UserProfile | null>(null);
+  userRef.current = user;
   const retryRef = useRef<(id: string) => void>(() => {});
+
+  /* ---------- User Profile Loading & Sync ---------- */
+  const refreshUser = useCallback(async () => {
+    try {
+      const u = await api.fetchMe();
+      setUser(u);
+      return u;
+    } catch (err) {
+      console.warn('refreshUser error:', err);
+      return null;
+    } finally {
+      setLoadingUser(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
+
+  // Synchronize initial daily nudge visibility on client
+  useEffect(() => {
+    try {
+      const today = todayIST();
+      const lastTriggered = localStorage.getItem('kharcha.nudge.triggered_date');
+      const lastDismissed = localStorage.getItem('kharcha.nudge.dismissed_date');
+
+      if (lastTriggered === today && lastDismissed !== today && user?.isGuest !== false) {
+        setNudgeActive(true);
+      } else {
+        setNudgeActive(false);
+      }
+    } catch {}
+  }, [user]);
+
+  const dismissNudge = useCallback(() => {
+    try {
+      const today = todayIST();
+      localStorage.setItem('kharcha.nudge.dismissed_date', today);
+    } catch {}
+    setNudgeActive(false);
+  }, []);
 
   /* ---------- Toast helper ---------- */
   const dismissToast = useCallback((id: string) => {
@@ -122,7 +175,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem('kharcha.settings');
-      if (raw) setSettingsState({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.lang !== 'hi-IN' && parsed.lang !== 'en-IN') {
+          parsed.lang = 'hi-IN';
+        }
+        setSettingsState({ ...DEFAULT_SETTINGS, ...parsed });
+      }
     } catch {}
   }, []);
 
@@ -147,7 +206,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   /* ---------- Sending an entry (Optimistic Mutation) ---------- */
   const send = useCallback(
-    async (e: Entry) => {
+    async (e: Entry, alternatives?: string[]) => {
       setEntries((prev) =>
         prev.map((x) =>
           x.clientId === e.clientId
@@ -161,6 +220,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           clientId: e.clientId,
           rawText: e.rawText,
           source: e.source,
+          alternatives,
         });
 
         // Non-transaction entered (e.g. "hello", "good morning")
@@ -194,20 +254,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }, 1600);
 
         const total = res.reduce((s, r) => s + (r.amount ?? 0), 0);
-        const label =
+        const catLabel =
           res.length === 1 ? CATEGORY_META[res[0].category]?.label || 'Expense' : `${res.length} entries`;
+        const modeLabel =
+          res.length === 1 && res[0].mode
+            ? ` • ${MODE_META[res[0].mode]?.label || res[0].mode.toUpperCase()}`
+            : '';
 
         toast({
           kind: 'success',
-          message: `Added ${rupees(total)} • ${label}`,
+          message: `Added ${rupees(total)} • ${catLabel}${modeLabel}`,
           action: {
-            label: 'Undo',
+            label: 'Edit',
             run: () => {
-              setEntries((prev) => prev.filter((x) => !ids.includes(x.clientId)));
-              ids.forEach((i) => api.deleteEntry(i));
+              setEditingId(ids[0]);
             },
           },
         });
+
+        // Trigger daily nudge: on reaching 3+ entries, and then only on the 1st successful entry of each subsequent day
+        const isGuest = userRef.current ? userRef.current.isGuest : true;
+        const currentTotal = entriesRef.current.length + (res.length > 0 ? 1 : 0);
+        if (isGuest && currentTotal >= 3) {
+          try {
+            const today = todayIST();
+            const lastTriggered = localStorage.getItem('kharcha.nudge.triggered_date');
+            if (lastTriggered !== today) {
+              localStorage.setItem('kharcha.nudge.triggered_date', today);
+              localStorage.removeItem('kharcha.nudge.dismissed_date');
+              setNudgeActive(true);
+            }
+          } catch {}
+        }
       } catch (err: any) {
         // Handle 422 MISSING_AMOUNT
         if (err instanceof api.ApiMissingAmountError) {
@@ -292,7 +370,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const add = useCallback(
-    (rawText: string, source: Source) => {
+    (rawText: string, source: Source, alternatives?: string[]) => {
       const now = new Date().toISOString();
       const entry: Entry = {
         clientId: uid(),
@@ -309,7 +387,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         sync: 'pending',
       };
       setEntries((prev) => [...prev, entry]);
-      send(entry);
+      send(entry, alternatives);
     },
     [send]
   );
@@ -330,7 +408,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setNavOnline(true);
       entriesRef.current
         .filter((e) => e.sync === 'error' && e.errorKind === 'network')
-        .forEach(send);
+        .forEach((e) => send(e));
     };
     const handleOffline = () => setNavOnline(false);
 
@@ -396,6 +474,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const clearAll = useCallback(() => setEntries([]), []);
 
+  const loginGoogle = useCallback(
+    async (credential: string) => {
+      const res = await api.loginWithGoogle(credential);
+      setUser(res.user);
+      setNudgeActive(false);
+      try {
+        localStorage.removeItem('kharcha.nudge.triggered_date');
+        localStorage.removeItem('kharcha.nudge.dismissed_date');
+      } catch {}
+      reload();
+      refreshStats();
+      toast({
+        kind: 'success',
+        message:
+          res.outcome === 'claimed'
+            ? 'Account saved! Your expenses are safely backed up.'
+            : res.mergedCount > 0
+            ? `Signed in. ${res.mergedCount} entries merged to your account.`
+            : 'Signed in successfully!',
+      });
+      return res;
+    },
+    [reload, refreshStats, toast]
+  );
+
+  const logout = useCallback(async () => {
+    await api.logoutUser();
+    setUser(null);
+    setNudgeActive(false);
+    reload();
+    refreshUser();
+    refreshStats();
+    toast({ kind: 'info', message: 'Signed out.' });
+  }, [reload, refreshUser, refreshStats, toast]);
+
   const sorted = useMemo(
     () => [...entries].sort((a, b) => (b.spentAt || '').localeCompare(a.spentAt || '')),
     [entries]
@@ -427,6 +540,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setSettings,
     clearAll,
     reload,
+    user,
+    loadingUser,
+    refreshUser,
+    loginGoogle,
+    logout,
+    nudgeActive,
+    dismissNudge,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

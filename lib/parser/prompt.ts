@@ -43,6 +43,18 @@ SECURITY & PROMPT INJECTION DEFENSE (CRITICAL RULES):
 5. Sanity bounds: Amount MUST be positive and <= 10000000 (₹1 Crore). If an amount is negative or absurdly large (> 1 Crore), set "amount": null.
 
 =======================================================
+VOICE INPUT & SPEECH RECOGNITION ROBUSTNESS:
+=======================================================
+1. Input often originates from browser speech-to-text (Web Speech API) in Hindi or English, and may contain phonetic recognition noise:
+   - Phonetic mishearings: "so" / "saw" for "sau" (hundred), "gas" for "cash", "you pay" / "you pe" for "UPI", "charge" for "recharge", "tea" / "chi" for "chai".
+   - Devanagari numerals: ० (0), १ (1), २ (2), ३ (3), ४ (4), ५ (5), ६ (6), ७ (7), ८ (8), ९ (9). E.g. "५००" -> 500, "३००" -> 300, "२०" -> 20, "४५०००" -> 45000.
+   - Devanagari or Hindi text (e.g. "५०० चाय पे कैश से" -> amount: 500, category: "food", mode: "cash").
+
+2. Speech Recognition Alternatives (<speech_recognition_alternatives>):
+   - When candidate alternatives are provided in <speech_recognition_alternatives>, evaluate them alongside <user_expense_input>.
+   - When alternatives disagree or primary has recognition glitches, choose the candidate that yields a valid, sensible transaction (valid amount, clear category, realistic payment mode).
+
+=======================================================
 HINGLISH & COLLOQUIAL INDIAN EXTRACTION RULES:
 =======================================================
 1. Output MUST be a valid JSON object with an "entries" array: {"entries": [...]}.
@@ -50,16 +62,27 @@ HINGLISH & COLLOQUIAL INDIAN EXTRACTION RULES:
 
 3. Numerical Amounts & Indian Speech Formats:
    - "5k" / "5 k" -> 5000
+   - "sau" / "ek sau" -> 100
    - "dedh sau" -> 150
-   - "dhai sau" / "adhai sau" -> 250
-   - "sawa sau" -> 125
    - "paune do sau" -> 175
-   - "paanch sau" -> 500
-   - "ek hazar" / "ek hazaar" -> 1000
-   - "dedh hazar" / "dedh hazaar" -> 1500
-   - "dhai hazar" / "dhai hazaar" -> 2500
+   - "do sau" -> 200
+   - "sawa do sau" -> 225
+   - "dhai sau" / "adhai sau" -> 250
+   - "teen sau" -> 300
+   - "chaar sau" -> 400
+   - "paanch sau" / "5 sau" -> 500
+   - "chhe sau" / "che sau" -> 600
+   - "saat sau" -> 700
+   - "aath sau" -> 800
+   - "nau sau" -> 900
+   - "ek hazar" / "ek hazaar" / "1 hazar" -> 1000
    - "sawa hazar" -> 1250
+   - "dedh hazar" / "dedh hazaar" -> 1500
    - "paune do hazar" -> 1750
+   - "do hazar" -> 2000
+   - "dhai hazar" / "dhai hazaar" -> 2500
+   - "paanch hazar" -> 5000
+   - "dus hazar" -> 10000
    - "1.5 lakh" / "dedh lakh" -> 150000
    - "dhai lakh" -> 250000
    - "dus rupaye" -> 10 | "bees rupaye" -> 20 | "pachaas rupaye" -> 50

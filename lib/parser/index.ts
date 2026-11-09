@@ -8,6 +8,7 @@ export interface ParseOptions {
   providerName?: string;
   referenceDate?: Date;
   timeoutMs?: number;
+  alternatives?: string[];
 }
 
 /**
@@ -50,7 +51,18 @@ export async function parse(
       .replace(/<\/?user_expense_input>/gi, '')
       .slice(0, 500);
 
-    const userMessageContent = `<user_expense_input>\n${sanitizedInput}\n</user_expense_input>`;
+    let userMessageContent = `<user_expense_input>\n${sanitizedInput}\n</user_expense_input>`;
+
+    if (options?.alternatives && options.alternatives.length > 0) {
+      const sanitizedAlts = options.alternatives
+        .map((a) => a.replace(/<\/?speech_recognition_alternatives>/gi, '').trim().slice(0, 500))
+        .filter(Boolean);
+      if (sanitizedAlts.length > 0) {
+        userMessageContent += `\n<speech_recognition_alternatives>\n${sanitizedAlts
+          .map((a, i) => `${i + 1}. ${a}`)
+          .join('\n')}\n</speech_recognition_alternatives>`;
+      }
+    }
 
     let jsonText: string;
     try {

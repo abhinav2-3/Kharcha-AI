@@ -15,21 +15,35 @@ const ENGLISH_EXAMPLES = [
   '250 for lunch yesterday',
 ];
 
+const HINDI_EXAMPLES = [
+  '500 chai pe cash se',
+  'kal petrol 300 upi',
+  'chai 20 aur samosa 30',
+  'salary aayi 45000',
+  'paanch sau ka recharge',
+  'dedh sau auto',
+];
+
 export default function Composer() {
-  const { add, draft, setDraft, settings } = useStore();
+  const { add, draft, setDraft, settings, setSettings } = useStore();
   const [text, setText] = useState('');
   const [exIdx, setExIdx] = useState(0);
   const fromVoice = useRef(false);
+  const voiceAlternativesRef = useRef<string[] | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const activeExamples = settings.lang === 'hi-IN' ? HINDI_EXAMPLES : ENGLISH_EXAMPLES;
+
   const speech = useSpeech({
-    lang: settings.lang || 'en-IN',
-    onFinal: (transcript) => {
+    lang: settings.lang || 'hi-IN',
+    onFinal: (transcript, alternatives) => {
       fromVoice.current = true;
+      voiceAlternativesRef.current = alternatives;
       if (settings.autoSend) {
-        add(transcript, 'voice');
+        add(transcript, 'voice', alternatives);
         setText('');
         fromVoice.current = false;
+        voiceAlternativesRef.current = undefined;
       } else {
         setText(transcript.slice(0, MAX_RAW_TEXT));
         setTimeout(() => inputRef.current?.focus(), 60);
@@ -48,18 +62,31 @@ export default function Composer() {
   // Rotate placeholder examples periodically
   useEffect(() => {
     const timer = setInterval(() => {
-      setExIdx((prev) => (prev + 1) % ENGLISH_EXAMPLES.length);
+      setExIdx((prev) => (prev + 1) % activeExamples.length);
     }, 3800);
     return () => clearInterval(timer);
-  }, []);
+  }, [activeExamples.length]);
 
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
     const trimmed = text.trim();
     if (!trimmed) return;
-    add(trimmed, fromVoice.current ? 'voice' : 'text');
+    add(
+      trimmed,
+      fromVoice.current ? 'voice' : 'text',
+      fromVoice.current ? voiceAlternativesRef.current : undefined
+    );
     setText('');
     fromVoice.current = false;
+    voiceAlternativesRef.current = undefined;
+  };
+
+  const handleSelectLang = (newLang: 'hi-IN' | 'en-IN') => {
+    setSettings({ lang: newLang });
+    if (speech.listening) {
+      speech.cancel();
+      setTimeout(() => speech.start(), 80);
+    }
   };
 
   const nearLimit = text.length > MAX_RAW_TEXT - 60;
@@ -125,7 +152,8 @@ export default function Composer() {
           listening={speech.listening}
           text={speech.text}
           error={speech.error}
-          lang={settings.lang || 'en-IN'}
+          lang={settings.lang || 'hi-IN'}
+          onSelectLang={handleSelectLang}
           onStop={speech.stop}
           onCancel={speech.cancel}
           onRetry={speech.start}

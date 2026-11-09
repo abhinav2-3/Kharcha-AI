@@ -5,6 +5,7 @@ export const CreateEntryInputSchema = z.object({
   clientId: z.string().min(1, 'clientId is required'),
   rawText: z.string().min(1, 'rawText cannot be empty').max(500, 'rawText exceeds 500 characters'),
   source: z.enum(SOURCES).default('text'),
+  alternatives: z.array(z.string().max(500)).max(5).optional(),
 });
 
 export const UpdateEntryInputSchema = z.object({

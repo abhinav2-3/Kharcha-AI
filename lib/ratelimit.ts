@@ -99,3 +99,42 @@ export async function recordRateLimitHit(userId: string): Promise<void> {
   }
 }
 
+
+
+/**
+ * IP-based rate limiter for authentication endpoints (e.g. /api/auth/google).
+ * Maximum 15 attempts per minute per IP address.
+ */
+export async function checkAuthRateLimit(
+  ip: string
+): Promise<{ allowed: boolean; retryAfterSeconds?: number }> {
+  try {
+    await connectDB();
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const key = `auth:${ip}`;
+    const count = await RateLimit.countDocuments({
+      userId: key,
+      createdAt: { $gte: oneMinuteAgo },
+    });
+
+    if (count >= 15) {
+      return { allowed: false, retryAfterSeconds: 60 };
+    }
+    return { allowed: true };
+  } catch (err) {
+    console.warn('Rate limit check error:', err);
+    return { allowed: true }; // Fail-open to avoid locking out legitimate users on DB transient issues
+  }
+}
+
+export async function recordAuthRateLimitHit(ip: string): Promise<void> {
+  try {
+    await connectDB();
+    await RateLimit.create({
+      userId: `auth:${ip}`,
+      createdAt: new Date(),
+    });
+  } catch (err) {
+    console.warn('Could not record auth rate limit hit:', err);
+  }
+}

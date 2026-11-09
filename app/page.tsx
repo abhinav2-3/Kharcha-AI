@@ -18,6 +18,8 @@ import Section from '@/components/Section';
 import EntryRow from '@/components/EntryRow';
 import DailyChart from '@/components/charts/DailyChart';
 import CategoryBars from '@/components/charts/CategoryBars';
+import HomeClaimNudge from '@/components/HomeClaimNudge';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 const ENGLISH_QUICK_CHIPS = [
   '500 for coffee with cash',
@@ -28,7 +30,7 @@ const ENGLISH_QUICK_CHIPS = [
 ];
 
 export default function HomePage() {
-  const { entries, sorted, loaded, month, setDraft, serverStats } = useStore();
+  const { entries, sorted, loaded, month, setDraft, serverStats, user } = useStore();
   const today = todayIST();
   const isCurrent = month === monthOf(today);
   const upto = isCurrent ? dayOfMonth(today) : daysInMonth(month);
@@ -181,9 +183,27 @@ export default function HomePage() {
               </button>
             ))}
           </div>
+
+          {user?.isGuest !== false && (
+            <div className="mt-9 border-t border-line/60 pt-6">
+              <p className="mb-3 text-[13.5px] text-ink2">
+                Already saved your expenses on another device?
+              </p>
+              <GoogleSignInButton
+                theme="outline"
+                size="medium"
+                text="signin_with"
+                shape="pill"
+                width={240}
+              />
+            </div>
+          )}
         </section>
       ) : (
         <>
+          {/* Claim Account Nudge (Triggers on 3+ entries, once a day) */}
+          <HomeClaimNudge />
+
           {/* Attention drawer */}
           {attention.length > 0 && (
             <Section title={attentionTitle} pad={false}>
