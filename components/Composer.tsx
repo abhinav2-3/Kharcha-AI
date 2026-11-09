@@ -36,6 +36,7 @@ export default function Composer() {
 
   const speech = useSpeech({
     lang: settings.lang || 'hi-IN',
+    silenceTimeoutMs: 3000, // Waits 3 seconds after speaking before concluding voice input
     onFinal: (transcript, alternatives) => {
       fromVoice.current = true;
       voiceAlternativesRef.current = alternatives;
