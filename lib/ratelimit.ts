@@ -138,3 +138,42 @@ export async function recordAuthRateLimitHit(ip: string): Promise<void> {
     console.warn('Could not record auth rate limit hit:', err);
   }
 }
+
+
+/**
+ * Rate limiter for developer feedback submissions.
+ * Maximum 5 submissions per hour per user or IP address.
+ */
+export async function checkFeedbackRateLimit(
+  keyId: string
+): Promise<{ allowed: boolean; retryAfterSeconds?: number }> {
+  try {
+    await connectDB();
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const key = `feedback:${keyId}`;
+    const count = await RateLimit.countDocuments({
+      userId: key,
+      createdAt: { $gte: oneHourAgo },
+    });
+
+    if (count >= 5) {
+      return { allowed: false, retryAfterSeconds: 3600 };
+    }
+    return { allowed: true };
+  } catch (err) {
+    console.warn('Feedback rate limit check error:', err);
+    return { allowed: true };
+  }
+}
+
+export async function recordFeedbackRateLimitHit(keyId: string): Promise<void> {
+  try {
+    await connectDB();
+    await RateLimit.create({
+      userId: `feedback:${keyId}`,
+      createdAt: new Date(),
+    });
+  } catch (err) {
+    console.warn('Could not record feedback rate limit hit:', err);
+  }
+}

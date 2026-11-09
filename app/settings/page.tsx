@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+import DeveloperFeedback from '@/components/DeveloperFeedback';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 
@@ -300,6 +301,9 @@ export default function SettingsPage() {
           </span>
         </Row>
       </div>
+
+      {/* Developer Feedback */}
+      <DeveloperFeedback />
 
       {/* Privacy Policy & Data Reload */}
       <div className="mt-8 space-y-3">

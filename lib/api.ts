@@ -380,3 +380,37 @@ export async function getStats(
   }
 }
 
+
+
+/**
+ * Submits user feedback directly to the developer.
+ */
+export async function sendFeedback(payload: {
+  message: string;
+  category?: 'bug' | 'idea' | 'other';
+  metadata?: {
+    userAgent?: string;
+    screen?: string;
+    theme?: string;
+  };
+}): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'include',
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      throw new ApiError('server', data?.error || 'Failed to submit feedback.');
+    }
+
+    return data;
+  } catch (err: any) {
+    if (err instanceof ApiError) throw err;
+    throw new ApiError('network', 'Could not submit feedback. Check your connection.');
+  }
+}
