@@ -16,6 +16,7 @@ import {
 import { useStore } from '@/lib/store';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import DeveloperFeedback from '@/components/DeveloperFeedback';
+import InstallPwaPrompt from '@/components/InstallPwaPrompt';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 
@@ -285,6 +286,11 @@ export default function SettingsPage() {
             ]}
           />
         </Row>
+      </div>
+
+      {/* Install App */}
+      <div className="mt-8">
+        <InstallPwaPrompt />
       </div>
 
       {/* Backup & Export */}
