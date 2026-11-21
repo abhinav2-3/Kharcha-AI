@@ -77,9 +77,13 @@ export default function InstallPwaPrompt() {
     return (
       <div className="rounded-2xl border border-line bg-surface p-4.5 shadow-sm">
         <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink">
-            <Smartphone size={20} />
-          </span>
+          <img
+            src="/logo.png"
+            alt="Kharcha Logo"
+            width={40}
+            height={40}
+            className="h-10 w-10 shrink-0 rounded-xl object-contain shadow-xs"
+          />
           <div>
             <h4 className="text-[15px] font-semibold text-ink">Install Kharcha App</h4>
             <p className="mt-0.5 text-[13px] leading-relaxed text-ink2">
@@ -103,9 +107,13 @@ export default function InstallPwaPrompt() {
     return (
       <div className="rounded-2xl border border-line bg-surface p-4.5 shadow-sm">
         <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink">
-            <Smartphone size={20} />
-          </span>
+          <img
+            src="/logo.png"
+            alt="Kharcha Logo"
+            width={40}
+            height={40}
+            className="h-10 w-10 shrink-0 rounded-xl object-contain shadow-xs"
+          />
           <div className="flex-1">
             <h4 className="text-[15px] font-semibold text-ink">Install on iPhone</h4>
             <p className="mt-0.5 text-[13px] leading-relaxed text-ink2">

@@ -1,5 +1,6 @@
 import { normalizeParsedItem, getISTDateString } from '../lib/parser/normalize';
 import { getLLMProvider } from '../lib/parser/providers';
+import { capitalize } from '../lib/format';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -68,6 +69,15 @@ async function runTests() {
   const geminiProvider = getLLMProvider('gemini');
   assert(geminiProvider.name === 'gemini', 'Explicit gemini provider should instantiate Gemini');
   console.log('✓ Test 5: Dynamic LLM provider factory passed');
+
+  // Test 6: Capitalization of note & formatting
+  assert(item1.note === 'Chai and biscuit', 'item1 note should have first letter capitalized');
+  assert(capitalize('coffee') === 'Coffee', 'coffee should be Coffee');
+  assert(capitalize('swiggy') === 'Swiggy', 'swiggy should be Swiggy');
+  assert(capitalize('chai and snacks') === 'Chai and snacks', 'first letter should be capitalized');
+  assert(capitalize('') === '', 'empty string should stay empty');
+  assert(capitalize(null) === '', 'null should return empty string');
+  console.log('✓ Test 6: Capitalization tests passed');
 
   console.log('All Parser & Normalizer tests passed successfully!');
 }

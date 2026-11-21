@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Entry } from '@/models/Entry';
-import { getAuthUserId } from '@/lib/auth';
+import { getAuthUserId, resolveSessionUser } from '@/lib/auth';
 import { getISTDateString } from '@/lib/parser/normalize';
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getAuthUserId(request);
-    if (!userId) {
+    const rawUserId = await getAuthUserId(request);
+    if (!rawUserId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized: Missing or invalid guest session' },
         { status: 401 }
       );
     }
+    const sessionUser = await resolveSessionUser(rawUserId);
+    const userId = sessionUser?.userId || rawUserId;
 
     const { searchParams } = new URL(request.url);
     const range = searchParams.get('range') || 'this_month'; // 'this_month' | 'last_30_days' | 'all'

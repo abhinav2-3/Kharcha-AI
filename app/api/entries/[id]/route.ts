@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { Entry } from '@/models/Entry';
-import { getAuthUserId } from '@/lib/auth';
+import { getAuthUserId, resolveSessionUser } from '@/lib/auth';
 import { UpdateEntryInputSchema } from '@/lib/validations/entry';
 import { getISTDateString } from '@/lib/parser/normalize';
 
@@ -12,13 +12,15 @@ interface RouteContext {
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
-    const userId = await getAuthUserId(request);
-    if (!userId) {
+    const rawUserId = await getAuthUserId(request);
+    if (!rawUserId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized: Missing or invalid guest session' },
         { status: 401 }
       );
     }
+    const sessionUser = await resolveSessionUser(rawUserId);
+    const userId = sessionUser?.userId || rawUserId;
 
     const { id } = await context.params;
     const body = await request.json().catch(() => null);
@@ -142,13 +144,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
-    const userId = await getAuthUserId(request);
-    if (!userId) {
+    const rawUserId = await getAuthUserId(request);
+    if (!rawUserId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized: Missing or invalid guest session' },
         { status: 401 }
       );
     }
+    const sessionUser = await resolveSessionUser(rawUserId);
+    const userId = sessionUser?.userId || rawUserId;
 
     const { id } = await context.params;
     await connectDB();

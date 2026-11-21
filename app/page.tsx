@@ -13,13 +13,18 @@ import {
   todayIST,
 } from '@/lib/format';
 import { useCountUp } from '@/lib/hooks';
+import dynamic from 'next/dynamic';
 import MonthSwitcher from '@/components/MonthSwitcher';
 import Section from '@/components/Section';
 import EntryRow from '@/components/EntryRow';
-import DailyChart from '@/components/charts/DailyChart';
 import CategoryBars from '@/components/charts/CategoryBars';
 import HomeClaimNudge from '@/components/HomeClaimNudge';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+
+const DailyChart = dynamic(() => import('@/components/charts/DailyChart'), {
+  ssr: false,
+  loading: () => <div className="h-44 w-full skel rounded-2xl animate-pulse" />,
+});
 
 const ENGLISH_QUICK_CHIPS = [
   '500 for coffee with cash',
@@ -99,7 +104,16 @@ export default function HomePage() {
       {/* Brand Hero Header */}
       <section className="rounded-b-[28px] bg-brand px-5 pb-6 pt-[calc(env(safe-area-inset-top)+14px)] text-on-brand shadow-md">
         <div className="flex items-center justify-between">
-          <span className="text-[18px] font-bold tracking-tight">Kharcha</span>
+          <div className="flex items-center gap-2">
+            <img
+              src="/logo.png"
+              alt="Kharcha Logo"
+              width={26}
+              height={26}
+              className="h-[26px] w-[26px] rounded-lg object-contain"
+            />
+            <span className="text-[18px] font-bold tracking-tight">Kharcha</span>
+          </div>
           <MonthSwitcher onBrand />
         </div>
 

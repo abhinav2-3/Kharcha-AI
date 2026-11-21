@@ -79,3 +79,15 @@ export const parseAmountInput = (s: string): number | null => {
 export const uid = () =>
   globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
+/**
+ * Capitalizes the first letter of a string.
+ * Example: "coffee" -> "Coffee", "chai and snacks" -> "Chai and snacks"
+ */
+export const capitalize = (s?: string | null): string => {
+  if (!s) return '';
+  const trimmed = s.trim();
+  if (!trimmed) return '';
+  return trimmed.replace(/^(['"]?)([\p{L}])/u, (_, quote, char) => `${quote}${char.toUpperCase()}`);
+};
+
+

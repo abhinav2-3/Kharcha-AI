@@ -58,7 +58,7 @@ export async function listEntries(params?: {
     const query = new URLSearchParams();
     if (params?.from) query.set('from', params.from);
     if (params?.to) query.set('to', params.to);
-    if (params?.limit) query.set('limit', String(params.limit));
+    query.set('limit', String(params?.limit || 500));
 
     const res = await fetch(`/api/entries?${query.toString()}`, {
       method: 'GET',

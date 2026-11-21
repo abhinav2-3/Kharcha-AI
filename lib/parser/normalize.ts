@@ -7,6 +7,7 @@ import {
   IncomeCategory,
   TIMEZONE,
 } from '@/lib/constants';
+import { capitalize } from '@/lib/format';
 import { ParsedItem, RawLLMItem } from './types';
 
 /**
@@ -117,7 +118,8 @@ export function normalizeParsedItem(
   }
 
   // 6. Note (sanitized against formula injection)
-  const note = sanitizeText(raw.note);
+  const sanitizedNote = sanitizeText(raw.note);
+  const note = sanitizedNote ? capitalize(sanitizedNote) : null;
 
   return {
     amount: amountPaise,

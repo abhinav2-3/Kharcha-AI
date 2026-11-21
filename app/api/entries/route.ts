@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Entry } from '@/models/Entry';
-import { getAuthUserId } from '@/lib/auth';
+import { getAuthUserId, resolveSessionUser } from '@/lib/auth';
 import { CreateEntryInputSchema } from '@/lib/validations/entry';
 import { parse } from '@/lib/parser';
 import { validatePreLLMInput } from '@/lib/parser/filter';
@@ -9,13 +9,15 @@ import { checkRateLimit, recordRateLimitHit } from '@/lib/ratelimit';
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getAuthUserId(request);
-    if (!userId) {
+    const rawUserId = await getAuthUserId(request);
+    if (!rawUserId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized: Missing or invalid guest session' },
         { status: 401 }
       );
     }
+    const sessionUser = await resolveSessionUser(rawUserId);
+    const userId = sessionUser?.userId || rawUserId;
 
     const body = await request.json().catch(() => null);
     const validation = CreateEntryInputSchema.safeParse(body);
@@ -188,20 +190,22 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getAuthUserId(request);
-    if (!userId) {
+    const rawUserId = await getAuthUserId(request);
+    if (!rawUserId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized: Missing or invalid guest session' },
         { status: 401 }
       );
     }
+    const sessionUser = await resolveSessionUser(rawUserId);
+    const userId = sessionUser?.userId || rawUserId;
 
     const { searchParams } = new URL(request.url);
     const from = searchParams.get('from'); // YYYY-MM-DD
     const to = searchParams.get('to'); // YYYY-MM-DD
     const cursor = searchParams.get('cursor'); // ISO date string of spentAt
-    const limitParam = parseInt(searchParams.get('limit') || '20', 10);
-    const limit = Math.min(Math.max(isNaN(limitParam) ? 20 : limitParam, 1), 50);
+    const limitParam = parseInt(searchParams.get('limit') || '500', 10);
+    const limit = Math.min(Math.max(isNaN(limitParam) ? 500 : limitParam, 1), 2000);
 
     await connectDB();
 

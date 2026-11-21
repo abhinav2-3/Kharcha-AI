@@ -12,7 +12,7 @@ import {
   type PaymentMode,
 } from '@/lib/constants';
 import { CATEGORY_META, MODE_META } from '@/lib/meta';
-import { parseAmountInput, todayIST } from '@/lib/format';
+import { capitalize, parseAmountInput, todayIST } from '@/lib/format';
 
 export default function EntrySheet() {
   const { editingId, entries, setEditingId } = useStore();
@@ -84,7 +84,7 @@ function Form({ entry, onClose }: { entry: Entry; onClose: () => void }) {
       type,
       category,
       mode,
-      note: note.trim() || null,
+      note: note.trim() ? capitalize(note.trim()) : null,
       spentOn: date,
       spentAt:
         date === entry.spentOn

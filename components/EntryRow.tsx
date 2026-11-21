@@ -2,7 +2,7 @@
 import { AlertCircle, CloudOff, Loader2, RefreshCw } from 'lucide-react';
 import type { Entry } from '@/lib/types';
 import { CATEGORY_META, MODE_META } from '@/lib/meta';
-import { dayLabel, rupees, timeLabel } from '@/lib/format';
+import { capitalize, dayLabel, rupees, timeLabel } from '@/lib/format';
 import { useStore } from '@/lib/store';
 import CategoryChip from './CategoryChip';
 
@@ -24,7 +24,7 @@ export default function EntryRow({
           <Loader2 size={18} className="animate-spin" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[16px] text-ink2">{e.rawText}</p>
+          <p className="truncate text-[16px] text-ink2">{capitalize(e.rawText)}</p>
           <p className="text-[13px] text-muted">Analyzing your expense...</p>
         </div>
         <div className="skel h-5 w-16" />
@@ -40,7 +40,7 @@ export default function EntryRow({
           <CloudOff size={18} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[16px] font-medium text-ink">{e.rawText}</p>
+          <p className="truncate text-[16px] font-medium text-ink">{capitalize(e.rawText)}</p>
           <p className="text-[13px] font-medium text-danger">
             Not sent • {e.errorMessage || 'Please retry'}
           </p>
@@ -66,7 +66,7 @@ export default function EntryRow({
           <AlertCircle size={18} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[16px] font-medium text-ink">{e.rawText}</p>
+          <p className="truncate text-[16px] font-medium text-ink">{capitalize(e.note || e.rawText)}</p>
           <p className="text-[13px] font-medium text-warn">Amount missing • not counted yet</p>
         </div>
         <span className="rounded-full bg-accent px-3.5 py-2 text-[14px] font-semibold text-accent-ink shadow-sm">
@@ -80,7 +80,7 @@ export default function EntryRow({
   const isIncome = e.type === 'income';
   const meta = CATEGORY_META[e.category] || CATEGORY_META.other;
   const modeMeta = MODE_META[e.mode] || MODE_META.cash;
-  const title = e.note || meta.label;
+  const title = capitalize(e.note || meta.label);
 
   return (
     <button

@@ -3,11 +3,16 @@ import { useMemo } from 'react';
 import { useStore } from '@/lib/store';
 import { byCategory, byMode, cumulative, inMonth, totals } from '@/lib/stats';
 import { daysInMonth, monthName, rupees, shiftMonth } from '@/lib/format';
+import dynamic from 'next/dynamic';
 import MonthSwitcher from '@/components/MonthSwitcher';
 import Section from '@/components/Section';
 import CategoryBars from '@/components/charts/CategoryBars';
 import ModeBar from '@/components/charts/ModeBar';
-import TrendChart from '@/components/charts/TrendChart';
+
+const TrendChart = dynamic(() => import('@/components/charts/TrendChart'), {
+  ssr: false,
+  loading: () => <div className="h-44 w-full skel rounded-2xl animate-pulse" />,
+});
 
 export default function InsightsPage() {
   const { entries, loaded, month, serverStats } = useStore();
