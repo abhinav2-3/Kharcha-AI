@@ -16,8 +16,8 @@ export default function EntryRow({
   const { setEditingId, retry } = useStore();
   const base = 'flex w-full items-center gap-3 px-5 py-3 text-left transition-colors';
 
-  // 1. Pending (Sent, waiting for parser)
-  if (e.sync === 'pending') {
+  // 1. Pending without amount (Sent, waiting for parser)
+  if (e.sync === 'pending' && e.amount == null) {
     return (
       <div className={base} aria-busy="true">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-tint text-muted">
@@ -25,7 +25,7 @@ export default function EntryRow({
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[16px] text-ink2">{capitalize(e.rawText)}</p>
-          <p className="text-[13px] text-muted">Analyzing your expense...</p>
+          <p className="text-[13px] text-muted">Saving locally...</p>
         </div>
         <div className="skel h-5 w-16" />
       </div>
@@ -92,15 +92,24 @@ export default function EntryRow({
       <div className="min-w-0 flex-1">
         <p className="truncate text-[16px] font-medium text-ink">{title}</p>
         <div className="mt-0.5 flex items-center gap-2 text-[13px] text-ink2">
-          <span>{showDay ? `${dayLabel(e.spentOn)}, ` : ''}{timeLabel(e.spentAt)}</span>
-          <span>•</span>
-          <span className="inline-flex items-center gap-1">
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: modeMeta.color }}
-            />
-            {modeMeta.label}
-          </span>
+          {e.sync === 'pending' ? (
+            <span className="inline-flex items-center gap-1.5 text-muted font-medium">
+              <Loader2 size={12} className="animate-spin text-accent" />
+              <span>Pending sync</span>
+            </span>
+          ) : (
+            <>
+              <span>{showDay ? `${dayLabel(e.spentOn)}, ` : ''}{timeLabel(e.spentAt)}</span>
+              <span>•</span>
+              <span className="inline-flex items-center gap-1">
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: modeMeta.color }}
+                />
+                {modeMeta.label}
+              </span>
+            </>
+          )}
         </div>
       </div>
 

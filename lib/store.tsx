@@ -13,6 +13,16 @@ import type { Entry, Filter, GoogleAuthResponse, Settings, Source, Toast, UserPr
 import * as api from './api';
 import { monthOf, rupees, todayIST, uid } from './format';
 import { CATEGORY_META, MODE_META } from './meta';
+import {
+  getAllLocalEntries,
+  saveLocalEntry,
+  saveLocalEntries,
+  markEntrySynced,
+  deleteLocalEntry,
+  clearUserLocalEntries,
+} from './idb';
+import { parseLocalExpense } from './parser/local';
+import { initSyncListeners, flushSyncQueue } from './sync';
 
 const DEFAULT_SETTINGS: Settings = {
   lang: 'hi-IN',
@@ -138,14 +148,54 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }, t.action ? 6500 : 4200);
   }, []);
 
+  /* ---------- Instant Offline Hydration from IndexedDB (<10ms) ---------- */
+  useEffect(() => {
+    const currentUserId = user?.userId || 'guest';
+    getAllLocalEntries(currentUserId).then((locals) => {
+      if (locals && locals.length > 0) {
+        setEntries((prev) => {
+          if (prev.length > 0) {
+            const serverIds = new Set(prev.map((s) => s.clientId));
+            const newLocals = locals.filter((l) => !serverIds.has(l.clientId));
+            return [...prev, ...newLocals];
+          }
+          return locals;
+        });
+        setLoaded(true);
+      }
+    });
+  }, [user?.userId]);
+
+  /* ---------- Background Sync Manager Listener ---------- */
+  useEffect(() => {
+    const currentUserId = user?.userId || 'guest';
+    const cleanup = initSyncListeners(currentUserId, (syncedEntry) => {
+      setEntries((prev) =>
+        prev.map((x) =>
+          x.clientId === syncedEntry.clientId
+            ? { ...syncedEntry, sync: 'synced', fresh: false }
+            : x
+        )
+      );
+      refreshStats();
+    });
+    return cleanup;
+  }, [user?.userId, refreshStats]);
+
   /* ---------- Initial load from Real Backend ---------- */
   const reload = useCallback(() => {
-    setLoaded(false);
+    const currentUserId = userRef.current?.userId || 'guest';
     api
       .listEntries()
-      .then((es) => {
-        setEntries(es);
+      .then((serverEntries) => {
+        setEntries((prev) => {
+          const pendingLocals = prev.filter((p) => p.sync === 'pending');
+          const serverClientIds = new Set(serverEntries.map((s) => s.clientId));
+          const stillPending = pendingLocals.filter((p) => !serverClientIds.has(p.clientId));
+          return [...stillPending, ...serverEntries];
+        });
         setLoaded(true);
+        saveLocalEntries(serverEntries, currentUserId);
       })
       .catch((err) => {
         console.warn('Initial load entries failed:', err);
@@ -234,6 +284,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
 
         const ids = res.map((r) => r.clientId);
+        const currentUserId = userRef.current?.userId || 'guest';
+        res.forEach((r) => markEntrySynced(r.clientId, r, currentUserId));
+
         setEntries((prev) => {
           const idx = prev.findIndex((x) => x.clientId === e.clientId);
           if (idx < 0) return prev;
@@ -370,26 +423,57 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const add = useCallback(
-    (rawText: string, source: Source, alternatives?: string[]) => {
+    async (rawText: string, source: Source, alternatives?: string[]) => {
       const now = new Date().toISOString();
+      const currentUserId = userRef.current?.userId || 'guest';
+
+      // 1. Fast local parse in 0ms (gives instant amount, category, mode even offline)
+      const local = parseLocalExpense(rawText);
+
       const entry: Entry = {
         clientId: uid(),
         rawText,
         source,
-        amount: null,
-        type: 'expense',
-        category: 'other',
-        mode: 'cash',
+        amount: local.amount ?? null,
+        type: local.type || 'expense',
+        category: local.category || 'other',
+        mode: local.mode || 'cash',
         spentAt: now,
-        spentOn: todayIST(),
-        parseStatus: 'ok',
+        spentOn: local.spentOn || todayIST(),
+        parseStatus: local.parseStatus || 'ok',
         createdAt: now,
         sync: 'pending',
+        fresh: true,
       };
-      setEntries((prev) => [...prev, entry]);
+
+      // 2. Save locally in IndexedDB (<5ms)
+      await saveLocalEntry(entry, currentUserId);
+
+      // 3. Immediately display in UI
+      setEntries((prev) => [entry, ...prev]);
+
+      // 4. Highlight briefly
+      setTimeout(() => {
+        setEntries((prev) =>
+          prev.map((x) => (x.clientId === entry.clientId ? { ...x, fresh: false } : x))
+        );
+      }, 1600);
+
+      // 5. If device is currently offline, show saved offline confirmation
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const amountDisp = entry.amount ? rupees(entry.amount) : '';
+        const catLabel = CATEGORY_META[entry.category]?.label || 'Expense';
+        toast({
+          kind: 'info',
+          message: `Saved offline • ${amountDisp} ${catLabel} (Will sync when connected)`,
+        });
+        return;
+      }
+
+      // 6. If online, send to server
       send(entry, alternatives);
     },
-    [send]
+    [send, toast]
   );
 
   const retry = useCallback(
@@ -456,6 +540,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const e = entriesRef.current.find((x) => x.clientId === id);
       if (!e) return;
       setEntries((prev) => prev.filter((x) => x.clientId !== id));
+      deleteLocalEntry(id);
       api.deleteEntry(id, e._id);
       toast({
         kind: 'info',
@@ -463,7 +548,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         action: {
           label: 'Undo',
           run: () => {
+            const currentUserId = userRef.current?.userId || 'guest';
             setEntries((prev) => [...prev, e]);
+            saveLocalEntry(e, currentUserId);
             api.restoreEntry(e.clientId, e._id);
           },
         },
@@ -500,7 +587,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    const currentUserId = userRef.current?.userId || 'guest';
     await api.logoutUser();
+    await clearUserLocalEntries(currentUserId);
     setUser(null);
     setNudgeActive(false);
     reload();
