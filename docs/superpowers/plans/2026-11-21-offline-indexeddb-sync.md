@@ -26,20 +26,20 @@
 - Consumes: `Entry` from `lib/types.ts`
 - Produces: `initDB()`, `saveLocalEntry(entry: Entry)`, `saveLocalEntries(entries: Entry[])`, `getPendingEntries(userId: string)`, `getAllLocalEntries(userId: string)`, `markEntrySynced(clientId: string, serverEntry: Entry)`, `deleteLocalEntry(clientId: string)`, `clearUserLocalEntries(userId: string)`
 
-- [ ] **Step 1: Write the test script for IndexedDB operations**
+- [x] **Step 1: Write the test script for IndexedDB operations**
 Create `scripts/test-idb.ts` with mock IndexedDB or node-compatible testing to verify schema creation, insertion, retrieval, and status updates.
 
-- [ ] **Step 2: Implement `lib/idb.ts`**
+- [x] **Step 2: Implement `lib/idb.ts`**
 Implement typed Promise wrapper around `window.indexedDB`:
 - Database `kharcha_offline_db`, Version `1`.
 - Object Store `entries` with keyPath `clientId`.
 - Indexes: `sync` (pending/synced), `spentOn` (date), `userId`.
 - Safe SSR guards (`typeof window === 'undefined'`).
 
-- [ ] **Step 3: Run test script and verify**
+- [x] **Step 3: Run test script and verify**
 Execute test to confirm all store operations, indexes, and error states work as expected.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 `git add lib/idb.ts scripts/test-idb.ts && git commit -m "feat(offline): native IndexedDB wrapper for local-first storage"`
 
 ---
@@ -54,23 +54,23 @@ Execute test to confirm all store operations, indexes, and error states work as 
 - Consumes: `rawText: string`, `source: Source`, `referenceDate?: Date`
 - Produces: `parseLocalExpense(rawText: string, options?: { referenceDate?: Date }): Partial<Entry>`
 
-- [ ] **Step 1: Write test cases for local parser**
+- [x] **Step 1: Write test cases for local parser**
 Create `scripts/test-local-parser.ts` testing extraction of:
 - Standard digits: `500 for coffee`, `1200 electricity bill via card`
 - Indian number words: `dedh sau auto`, `dhai sau kachori`, `paanch sau recharge`
 - Multi-word categories & modes: `chai 20 upi`, `petrol 300 cash`
 
-- [ ] **Step 2: Implement `lib/parser/local.ts`**
+- [x] **Step 2: Implement `lib/parser/local.ts`**
 Pure TypeScript heuristic engine:
 - Regex for amounts (`\d+`, `\d+k`, Hindi words like `dedh sau`, `dhai sau`).
 - Payment mode detection (`upi`, `cash`, `card`, `bank_transfer`).
 - Category keyword mapping (`food`, `transport`, `groceries`, `bills`, `health`, etc.).
 - Returns optimistic structured fields in paise.
 
-- [ ] **Step 3: Run test script and verify**
+- [x] **Step 3: Run test script and verify**
 Run `npx tsx scripts/test-local-parser.ts` and confirm all scenarios extract correct amount in paise, category, and mode.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 `git add lib/parser/local.ts scripts/test-local-parser.ts && git commit -m "feat(offline): client-side fast heuristic parser"`
 
 ---
@@ -85,14 +85,14 @@ Run `npx tsx scripts/test-local-parser.ts` and confirm all scenarios extract cor
 - Consumes: `lib/idb.ts`, `api.createEntries` from `lib/api.ts`
 - Produces: `startSyncManager()`, `flushSyncQueue(userId: string)`, `onSyncStatusChange(cb)`
 
-- [ ] **Step 1: Write unit tests for sync queue logic**
+- [x] **Step 1: Write unit tests for sync queue logic**
 Create `scripts/test-sync.ts` simulating:
 - Multiple pending entries in queue.
 - Reconnection triggers (`online` event).
 - Mutex lock preventing parallel sync runs.
 - Successful resolution updating IndexedDB records to `synced`.
 
-- [ ] **Step 2: Implement `lib/sync.ts`**
+- [x] **Step 2: Implement `lib/sync.ts`**
 Implement the sync engine:
 - Mutex guard `isSyncing = false`.
 - Drains `getPendingEntries(userId)` sequentially.
@@ -100,10 +100,10 @@ Implement the sync engine:
 - Calls `markEntrySynced(...)` in IndexedDB upon receipt of server response.
 - Attaches event listeners for `online` and `visibilitychange`.
 
-- [ ] **Step 3: Run test script and verify**
+- [x] **Step 3: Run test script and verify**
 Verify sync queue processes all pending items in correct chronological order without duplicate submissions.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 `git add lib/sync.ts scripts/test-sync.ts && git commit -m "feat(offline): resilient background sync engine"`
 
 ---
@@ -118,29 +118,29 @@ Verify sync queue processes all pending items in correct chronological order wit
 - Consumes: `lib/idb.ts`, `lib/parser/local.ts`, `lib/sync.ts`
 - Produces: Updated `useStore()` with instant offline add, offline hydration, and sync status updates.
 
-- [ ] **Step 1: Hydrate React state from IndexedDB on startup**
+- [x] **Step 1: Hydrate React state from IndexedDB on startup**
 In `lib/store.tsx`:
 - Before waiting for `api.listEntries()`, load all local entries from `getAllLocalEntries(user.userId)` immediately so the app shows data in <10ms.
 - When `api.listEntries()` completes, reconcile with server entries and update local storage.
 
-- [ ] **Step 2: Update `add()` to write to IndexedDB first**
+- [x] **Step 2: Update `add()` to write to IndexedDB first**
 In `lib/store.tsx`:
 - If offline or network slow, parse with `parseLocalExpense(rawText)`.
 - Save entry to IndexedDB with `sync: 'pending'`.
 - Immediately update React state so the item appears on the user's dashboard.
 - Trigger `flushSyncQueue(user.userId)`.
 
-- [ ] **Step 3: Update `EntryRow.tsx` with offline/syncing badge**
+- [x] **Step 3: Update `EntryRow.tsx` with offline/syncing badge**
 In `components/EntryRow.tsx`:
 - When `entry.sync === 'pending'`, show a subtle, elegant indicator (e.g. cloud icon or "Syncing...").
 - When `synced`, indicator smoothly resolves to normal state.
 
-- [ ] **Step 4: Handle Logout & Account Claim Cleanup**
+- [x] **Step 4: Handle Logout & Account Claim Cleanup**
 In `lib/store.tsx`:
 - In `logout()`: call `clearUserLocalEntries(user.userId)`.
 - In `loginGoogle()`: migrate local guest entries to the new user ID.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 `git add lib/store.tsx components/EntryRow.tsx && git commit -m "feat(offline): integrate IndexedDB and sync engine into app store"`
 
 ---
@@ -150,15 +150,15 @@ In `lib/store.tsx`:
 **Files:**
 - Test: Full simulation script `scripts/test-e2e-offline.ts`
 
-- [ ] **Step 1: Run comprehensive offline end-to-end verification**
+- [x] **Step 1: Run comprehensive offline end-to-end verification**
 Simulate:
 1. Creating entries offline.
 2. Checking IndexedDB contents.
 3. Reloading page and confirming entries persist.
 4. Simulating online event and verifying automatic sync to server.
 
-- [ ] **Step 2: Run Next.js production build**
+- [x] **Step 2: Run Next.js production build**
 Run `npm run build` to verify zero type errors, lint warnings, or hydration mismatches.
 
-- [ ] **Step 3: Commit & Final Wrap-up**
+- [x] **Step 3: Commit & Final Wrap-up**
 Commit all verified files.
