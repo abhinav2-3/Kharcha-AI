@@ -166,22 +166,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, [user?.userId]);
 
-  /* ---------- Background Sync Manager Listener ---------- */
-  useEffect(() => {
-    const currentUserId = user?.userId || 'guest';
-    const cleanup = initSyncListeners(currentUserId, (syncedEntry) => {
-      setEntries((prev) =>
-        prev.map((x) =>
-          x.clientId === syncedEntry.clientId
-            ? { ...syncedEntry, sync: 'synced', fresh: false }
-            : x
-        )
-      );
-      refreshStats();
-    });
-    return cleanup;
-  }, [user?.userId, refreshStats]);
-
   /* ---------- Initial load from Real Backend ---------- */
   const reload = useCallback(() => {
     const currentUserId = userRef.current?.userId || 'guest';
@@ -220,6 +204,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshStats();
   }, [refreshStats, entries]);
+
+  /* ---------- Background Sync Manager Listener ---------- */
+  useEffect(() => {
+    const currentUserId = user?.userId || 'guest';
+    const cleanup = initSyncListeners(currentUserId, (syncedEntry) => {
+      setEntries((prev) =>
+        prev.map((x) =>
+          x.clientId === syncedEntry.clientId
+            ? { ...syncedEntry, sync: 'synced', fresh: false }
+            : x
+        )
+      );
+      refreshStats();
+    });
+    return cleanup;
+  }, [user?.userId, refreshStats]);
 
   /* ---------- Settings persistence ---------- */
   useEffect(() => {
