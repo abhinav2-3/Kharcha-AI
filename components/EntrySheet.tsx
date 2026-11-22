@@ -222,6 +222,7 @@ function Form({ entry, onClose }: { entry: Entry; onClose: () => void }) {
               {PAYMENT_MODES.filter((m) => m !== 'unknown').map((m) => {
                 const isSelected = mode === m;
                 const meta = MODE_META[m];
+                const ModeIcon = meta?.icon;
                 return (
                   <button
                     key={m}
@@ -229,14 +230,11 @@ function Form({ entry, onClose }: { entry: Entry; onClose: () => void }) {
                     onClick={() => setMode(m)}
                     className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-all ${
                       isSelected
-                        ? 'border-ink bg-ink text-bg'
+                        ? 'border-ink bg-ink text-bg shadow-sm'
                         : 'border-line bg-surface text-ink hover:bg-tint'
                     }`}
                   >
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: meta?.color || 'var(--s1)' }}
-                    />
+                    {ModeIcon && <ModeIcon size={14} />}
                     <span>{meta?.label || m}</span>
                   </button>
                 );

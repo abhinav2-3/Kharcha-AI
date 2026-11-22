@@ -80,6 +80,7 @@ export default function EntryRow({
   const isIncome = e.type === 'income';
   const meta = CATEGORY_META[e.category] || CATEGORY_META.other;
   const modeMeta = MODE_META[e.mode] || MODE_META.cash;
+  const ModeIcon = modeMeta.icon;
   const title = capitalize(e.note || meta.label);
 
   return (
@@ -94,19 +95,20 @@ export default function EntryRow({
         <div className="mt-0.5 flex items-center gap-2 text-[13px] text-ink2">
           {e.sync === 'pending' ? (
             <span className="inline-flex items-center gap-1.5 text-muted font-medium">
-              <Loader2 size={12} className="animate-spin text-accent" />
+              <Loader2 size={12} className="animate-spin text-ink" />
               <span>Pending sync</span>
             </span>
           ) : (
             <>
-              <span>{showDay ? `${dayLabel(e.spentOn)}, ` : ''}{timeLabel(e.spentAt)}</span>
-              <span>•</span>
-              <span className="inline-flex items-center gap-1">
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: modeMeta.color }}
-                />
-                {modeMeta.label}
+              {showDay && (
+                <>
+                  <span>{dayLabel(e.spentOn)}</span>
+                  <span>•</span>
+                </>
+              )}
+              <span className="inline-flex items-center gap-1.5">
+                {ModeIcon && <ModeIcon size={13} className="text-ink2" />}
+                <span>{modeMeta.label}</span>
               </span>
             </>
           )}

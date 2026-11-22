@@ -1,8 +1,10 @@
 import {
   Banknote,
+  Building2,
   Clapperboard,
   Coffee,
   CircleDashed,
+  CreditCard,
   Fuel,
   GraduationCap,
   Gift,
@@ -11,6 +13,7 @@ import {
   Landmark,
   Laptop,
   Plane,
+  QrCode,
   RotateCcw,
   Scissors,
   ShoppingBag,
@@ -49,12 +52,12 @@ export const CATEGORY_META: Record<AnyCategory, { label: string; icon: LucideIco
   other_income: { label: 'Other income', icon: Wallet },
 };
 
-export const MODE_META: Record<PaymentMode, { label: string; color: string }> = {
-  cash: { label: 'Cash', color: 'var(--s1)' },
-  upi: { label: 'UPI', color: 'var(--s2)' },
-  card: { label: 'Card', color: 'var(--s3)' },
-  bank_transfer: { label: 'Bank', color: 'var(--s4)' },
-  other: { label: 'Other', color: 'var(--s-other)' },
-  unknown: { label: 'Not set', color: 'var(--s-other)' },
+export const MODE_META: Record<PaymentMode, { label: string; color: string; icon: LucideIcon }> = {
+  cash: { label: 'Cash', color: 'var(--ink)', icon: Banknote },
+  upi: { label: 'UPI', color: 'var(--ink)', icon: QrCode },
+  card: { label: 'Card', color: 'var(--ink)', icon: CreditCard },
+  bank_transfer: { label: 'Bank', color: 'var(--ink)', icon: Building2 },
+  other: { label: 'Other', color: 'var(--muted)', icon: Wallet },
+  unknown: { label: 'Other', color: 'var(--muted)', icon: Wallet },
 };
 
