@@ -233,7 +233,7 @@ export default function HomePage() {
             aside={spent > 0 ? `Avg ${rupees(avg)} a day` : undefined}
           >
             {spent > 0 ? (
-              <DailyChart data={daily} month={month} />
+              <DailyChart data={daily} month={month} entries={entries} />
             ) : (
               <p className="rounded-2xl bg-tint px-4 py-6 text-center text-[15px] text-ink2">
                 No spending logged in {currentMonthName}.
