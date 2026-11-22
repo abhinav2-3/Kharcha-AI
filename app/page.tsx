@@ -102,44 +102,40 @@ export default function HomePage() {
   return (
     <div>
       {/* Brand Hero Header */}
-      <section className="rounded-b-[28px] bg-brand px-5 pb-6 pt-[calc(env(safe-area-inset-top)+14px)] text-on-brand shadow-md">
+      <section className="border-b border-line bg-surface px-5 pb-6 pt-[calc(env(safe-area-inset-top)+14px)] text-ink">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <img
               src="/logo.png"
               alt="Kharcha Logo"
               width={26}
               height={26}
-              className="h-[26px] w-[26px] rounded-lg object-contain"
+              className="h-[26px] w-[26px] rounded-lg object-contain dark:invert"
             />
-            <span className="text-[18px] font-bold tracking-tight">Kharcha</span>
+            <span className="text-[18px] font-bold tracking-tight text-ink">Kharcha</span>
           </div>
-          <MonthSwitcher onBrand />
+          <MonthSwitcher />
         </div>
 
-        <p className="mt-7 text-[15px] text-on-brand2 font-medium">
+        <p className="mt-6 text-[14px] text-ink2 font-medium">
           Spent in {currentMonthName}
         </p>
 
         {loaded ? (
           <p
-            className="num mt-1 text-[54px] font-bold leading-[1.05] tracking-[-0.035em]"
+            className="num mt-1 text-[52px] font-bold leading-[1.05] tracking-[-0.04em] text-ink"
             aria-live="polite"
           >
             {rupees(Math.round(hero))}
           </p>
         ) : (
-          <div className="skel mt-2 h-[58px] w-56 !bg-white/15" />
+          <div className="skel mt-2 h-[58px] w-56" />
         )}
 
         <div className="mt-2 min-h-[28px]">
           {loaded && hasPrev && (
-            <span
-              className={`inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-[13px] font-medium ${
-                delta <= 0 ? 'text-good-on-brand' : 'text-bad-on-brand'
-              }`}
-            >
-              {delta <= 0 ? <ArrowDownRight size={15} /> : <ArrowUpRight size={15} />}
+            <span className="inline-flex items-center gap-1 rounded-full border border-line bg-tint px-3 py-0.5 text-[12.5px] font-medium text-ink2">
+              {delta <= 0 ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
               {rupees(Math.abs(delta))} {delta <= 0 ? 'less' : 'more'} than {monthName(prevMonth)}{' '}
               {isCurrent ? 'so far' : ''}
             </span>
@@ -147,16 +143,16 @@ export default function HomePage() {
         </div>
 
         {/* Income & Balance Summary */}
-        <dl className="mt-6 grid grid-cols-2 border-t border-white/15 pt-4">
+        <dl className="mt-5 grid grid-cols-2 border-t border-line/70 pt-4">
           <div>
-            <dt className="text-[13px] text-on-brand2 font-medium">Income</dt>
-            <dd className="num mt-0.5 text-[18px] font-semibold">
+            <dt className="text-[12.5px] text-ink2 font-medium">Income</dt>
+            <dd className="num mt-0.5 text-[17px] font-semibold text-ink">
               {loaded ? rupees(income) : '—'}
             </dd>
           </div>
-          <div className="border-l border-white/15 pl-5">
-            <dt className="text-[13px] text-on-brand2 font-medium">Remaining Balance</dt>
-            <dd className="num mt-0.5 text-[18px] font-semibold">
+          <div className="border-l border-line/70 pl-5">
+            <dt className="text-[12.5px] text-ink2 font-medium">Remaining Balance</dt>
+            <dd className="num mt-0.5 text-[17px] font-semibold text-ink">
               {loaded
                 ? `${income - spent < 0 ? '-' : ''}${rupees(Math.abs(income - spent))}`
                 : '—'}

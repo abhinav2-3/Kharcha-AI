@@ -1,93 +1,103 @@
 @import "tailwindcss";
 
 /* ---------- Design tokens ----------
-   Ink-indigo + marigold. Chart slots (--s1..s4) for clean categorical visualizations. */
+   Pure Monochrome (Black & White only) inspired by Mibu minimalism. */
 :root {
   color-scheme: light;
-  --outer: #e4e6f0;
-  --bg: #f2f3f8;
+  --outer: #ffffff;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --tint: #eceef8;
-  --ink: #11142b;
-  --ink-2: #4b5068;
-  --muted: #7a8099;
-  --line: #e2e4ee;
-  --axis: #c6cad9;
-  --brand: #1a1f4b;
-  --on-brand: #ffffff;
-  --on-brand-2: rgba(255, 255, 255, 0.72);
-  --good-on-brand: #8be79b;
-  --bad-on-brand: #ffb4a8;
-  --accent: #ffb400;
-  --accent-ink: #1a1300;
-  --accent-soft: #fff3cc;
-  --income: #006300;
-  --income-bg: #e3f2e3;
-  --danger: #c2332f;
-  --danger-bg: #fcebea;
-  --warn: #7a5200;
-  --warn-bg: #fff3d1;
-  --s1: #2a78d6;
-  --s2: #eb6834;
-  --s3: #1baf7a;
-  --s4: #eda100;
-  --s-other: #9aa0b8;
+  --tint: #f5f5f7;
+  --ink: #000000;
+  --ink-2: #555555;
+  --muted: #888888;
+  --line: #e8e8ed;
+  --axis: #d0d0d5;
+  --brand: #ffffff;
+  --on-brand: #000000;
+  --on-brand-2: rgba(0, 0, 0, 0.65);
+  --good-on-brand: #000000;
+  --bad-on-brand: #666666;
+  --accent: #000000;
+  --accent-ink: #ffffff;
+  --accent-soft: #f0f0f2;
+  --income: #000000;
+  --income-bg: #f5f5f7;
+  --danger: #000000;
+  --danger-bg: #f5f5f7;
+  --warn: #000000;
+  --warn-bg: #f5f5f7;
+  --s1: #000000;
+  --s2: #333333;
+  --s3: #666666;
+  --s4: #999999;
+  --s-other: #cccccc;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
-    --outer: #05060d;
-    --bg: #0b0d1a;
-    --surface: #151833;
-    --tint: #1d2145;
-    --ink: #eef0fa;
-    --ink-2: #b4b9d2;
-    --muted: #8087a0;
-    --line: #252949;
-    --axis: #343960;
-    --brand: #1e2459;
-    --accent: #ffb400;
-    --accent-ink: #ffd566;
-    --accent-soft: #3a2e08;
-    --income: #3dbe3d;
-    --income-bg: #12301a;
-    --danger: #f0706c;
-    --danger-bg: #3a1a1f;
-    --warn: #f2c14e;
-    --warn-bg: #3a2d0c;
-    --s1: #3987e5;
-    --s2: #d95926;
-    --s3: #199e70;
-    --s4: #c98500;
+    --outer: #000000;
+    --bg: #000000;
+    --surface: #0a0a0a;
+    --tint: #161616;
+    --ink: #ffffff;
+    --ink-2: #a0a0a0;
+    --muted: #666666;
+    --line: #222222;
+    --axis: #333333;
+    --brand: #000000;
+    --on-brand: #ffffff;
+    --on-brand-2: rgba(255, 255, 255, 0.7);
+    --good-on-brand: #ffffff;
+    --bad-on-brand: #a0a0a0;
+    --accent: #ffffff;
+    --accent-ink: #000000;
+    --accent-soft: #1a1a1a;
+    --income: #ffffff;
+    --income-bg: #1a1a1a;
+    --danger: #ffffff;
+    --danger-bg: #1a1a1a;
+    --warn: #ffffff;
+    --warn-bg: #1a1a1a;
+    --s1: #ffffff;
+    --s2: #cccccc;
+    --s3: #999999;
+    --s4: #666666;
+    --s-other: #444444;
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --outer: #05060d;
-  --bg: #0b0d1a;
-  --surface: #151833;
-  --tint: #1d2145;
-  --ink: #eef0fa;
-  --ink-2: #b4b9d2;
-  --muted: #8087a0;
-  --line: #252949;
-  --axis: #343960;
-  --brand: #1e2459;
-  --accent: #ffb400;
-  --accent-ink: #ffd566;
-  --accent-soft: #3a2e08;
-  --income: #3dbe3d;
-  --income-bg: #12301a;
-  --danger: #f0706c;
-  --danger-bg: #3a1a1f;
-  --warn: #f2c14e;
-  --warn-bg: #3a2d0c;
-  --s1: #3987e5;
-  --s2: #d95926;
-  --s3: #199e70;
-  --s4: #c98500;
+  --outer: #000000;
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --tint: #161616;
+  --ink: #ffffff;
+  --ink-2: #a0a0a0;
+  --muted: #666666;
+  --line: #222222;
+  --axis: #333333;
+  --brand: #000000;
+  --on-brand: #ffffff;
+  --on-brand-2: rgba(255, 255, 255, 0.7);
+  --good-on-brand: #ffffff;
+  --bad-on-brand: #a0a0a0;
+  --accent: #ffffff;
+  --accent-ink: #000000;
+  --accent-soft: #1a1a1a;
+  --income: #ffffff;
+  --income-bg: #1a1a1a;
+  --danger: #ffffff;
+  --danger-bg: #1a1a1a;
+  --warn: #ffffff;
+  --warn-bg: #1a1a1a;
+  --s1: #ffffff;
+  --s2: #cccccc;
+  --s3: #999999;
+  --s4: #666666;
+  --s-other: #444444;
 }
 
 @theme inline {
