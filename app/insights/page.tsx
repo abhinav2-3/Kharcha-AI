@@ -1,15 +1,15 @@
 'use client';
 import { useMemo } from 'react';
 import { useStore } from '@/lib/store';
-import { byCategory, byMode, cumulative, inMonth, totals } from '@/lib/stats';
-import { daysInMonth, monthName, rupees, shiftMonth } from '@/lib/format';
+import { byCategory, byMode, inMonth, totals } from '@/lib/stats';
+import { monthLabel, monthName, rupees, shiftMonth } from '@/lib/format';
 import dynamic from 'next/dynamic';
 import MonthSwitcher from '@/components/MonthSwitcher';
 import Section from '@/components/Section';
 import CategoryBars from '@/components/charts/CategoryBars';
 import ModeBar from '@/components/charts/ModeBar';
 
-const TrendChart = dynamic(() => import('@/components/charts/TrendChart'), {
+const WaveChart = dynamic(() => import('@/components/charts/WaveChart'), {
   ssr: false,
   loading: () => <div className="h-44 w-full skel rounded-2xl animate-pulse" />,
 });
@@ -45,17 +45,31 @@ export default function InsightsPage() {
 
   const modes = useMemo(() => byMode(mCurrent), [mCurrent]);
 
-  const trendData = useMemo(() => {
-    const curCum = cumulative(mCurrent, month);
-    const prevCum = cumulative(mPrev, prevMonth);
-    const days = Math.max(daysInMonth(month), daysInMonth(prevMonth));
+  const waveData = useMemo(() => {
+    // 6-month trailing window ending at active `month`
+    const months = [
+      shiftMonth(month, -5),
+      shiftMonth(month, -4),
+      shiftMonth(month, -3),
+      shiftMonth(month, -2),
+      shiftMonth(month, -1),
+      month,
+    ];
 
-    return Array.from({ length: days }, (_, i) => ({
-      day: i + 1,
-      cur: i < curCum.length ? curCum[i] : null,
-      prev: i < prevCum.length ? prevCum[i] : null,
-    }));
-  }, [mCurrent, mPrev, month, prevMonth]);
+    return months.map((m) => {
+      const mEntries = inMonth(entries, m);
+      const isCur = m === month;
+      const amountPaise = isCur && serverHasMore ? curSpent : totals(mEntries).spent;
+
+      return {
+        key: m,
+        label: monthName(m).slice(0, 3).toLowerCase(),
+        fullDate: monthLabel(m),
+        amount: amountPaise / 100,
+        isCurrent: isCur,
+      };
+    });
+  }, [entries, month, curSpent, serverHasMore]);
 
   const currentMonthName = monthName(month);
 
@@ -81,12 +95,12 @@ export default function InsightsPage() {
         </div>
       ) : (
         <>
-          {/* Monthly Comparison Trend */}
+          {/* Fluid Monochrome Spending Wave */}
           <Section
-            title="Spending Pace"
+            title="Spending Trajectory"
             aside={curSpent > 0 ? `Total: ${rupees(curSpent)}` : undefined}
           >
-            <TrendChart data={trendData} month={month} prevMonth={prevMonth} />
+            <WaveChart data={waveData} currentMonth={month} />
           </Section>
 
           {/* Category Breakdown */}
