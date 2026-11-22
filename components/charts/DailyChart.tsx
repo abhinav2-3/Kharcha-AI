@@ -38,7 +38,7 @@ function Tip({ active, payload }: any) {
 }
 
 export default function DailyChart({ data: legacyData, month, entries: propEntries }: DailyChartProps) {
-  const storeEntries = useStore((s) => s.entries);
+  const { entries: storeEntries } = useStore();
   const entries = propEntries ?? storeEntries;
 
   const [period, setPeriod] = useState<Period>('week');
@@ -146,7 +146,7 @@ export default function DailyChart({ data: legacyData, month, entries: propEntri
               data={points}
               margin={{ top: 22, right: 4, left: -14, bottom: 0 }}
               barCategoryGap={period === 'month' ? '14%' : '20%'}
-              onClick={(state) => {
+              onClick={(state: any) => {
                 if (state && state.activePayload && state.activePayload.length > 0) {
                   const clicked: PeriodPoint = state.activePayload[0].payload;
                   setSelectedKey((prev) => (prev === clicked.key ? null : clicked.key));
@@ -222,6 +222,7 @@ export default function DailyChart({ data: legacyData, month, entries: propEntri
                       fill="var(--ink)"
                       fillOpacity={opacity}
                       className="cursor-pointer transition-opacity"
+                      onClick={() => setSelectedKey((prev) => (prev === p.key ? null : p.key))}
                     />
                   );
                 })}
