@@ -20,11 +20,10 @@ export default function ModeBar({ rows }: { rows: ReturnType<typeof byMode> }) {
           return (
             <div
               key={r.mode}
-              className="flex min-w-[6px] items-center overflow-hidden rounded-[4px] pl-2 text-[12px] font-semibold"
+              className="flex min-w-[6px] items-center overflow-hidden rounded-[4px] pl-2 text-[12px] font-semibold text-white"
               style={{
                 flex: r.paise,
                 background: meta.color,
-                color: r.mode === 'bank_transfer' ? '#0b0b0b' : '#fff',
               }}
               title={`${meta.label} • ${rupees(r.paise)}`}
             >

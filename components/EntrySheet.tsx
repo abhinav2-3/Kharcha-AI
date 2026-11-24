@@ -228,13 +228,27 @@ function Form({ entry, onClose }: { entry: Entry; onClose: () => void }) {
                     key={m}
                     type="button"
                     onClick={() => setMode(m)}
+                    style={
+                      isSelected
+                        ? {
+                            borderColor: meta.color,
+                            backgroundColor: meta.bgColor,
+                            color: meta.color,
+                          }
+                        : undefined
+                    }
                     className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-all ${
                       isSelected
-                        ? 'border-ink bg-ink text-bg shadow-sm'
+                        ? 'shadow-xs font-semibold'
                         : 'border-line bg-surface text-ink hover:bg-tint'
                     }`}
                   >
-                    {ModeIcon && <ModeIcon size={14} />}
+                    {ModeIcon && (
+                      <ModeIcon
+                        size={14}
+                        style={{ color: isSelected ? meta.color : undefined }}
+                      />
+                    )}
                     <span>{meta?.label || m}</span>
                   </button>
                 );

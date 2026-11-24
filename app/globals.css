@@ -242,3 +242,12 @@ input:focus-visible {
   }
 }
 
+/* Remove all click/tap borders, focus rings, and tap highlights on charts and SVGs */
+svg, svg *, svg:focus, svg:focus-visible, svg *:focus, svg *:focus-visible,
+.recharts-wrapper, .recharts-surface, .recharts-layer, .recharts-bar-rectangle {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  user-select: none;
+}
+
+

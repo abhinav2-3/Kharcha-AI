@@ -106,8 +106,14 @@ export default function EntryRow({
                   <span>•</span>
                 </>
               )}
-              <span className="inline-flex items-center gap-1.5">
-                {ModeIcon && <ModeIcon size={13} className="text-ink2" />}
+              <span
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11.5px] font-medium"
+                style={{
+                  backgroundColor: modeMeta.bgColor,
+                  color: modeMeta.color,
+                }}
+              >
+                {ModeIcon && <ModeIcon size={12} style={{ color: modeMeta.color }} />}
                 <span>{modeMeta.label}</span>
               </span>
             </>

@@ -78,7 +78,6 @@ export default function DailyChart({ data: legacyData, month, entries: propEntri
   }, [entries, legacyData, month, period, isCurrentMonth, today]);
 
   const max = Math.max(...points.map((p) => p.amount), 0);
-  const maxIdx = points.findIndex((p) => p.amount === max);
   const total = points.reduce((acc, p) => acc + p.amount, 0);
 
   const activePoint = points.find((p) => p.key === selectedKey) || null;
@@ -90,7 +89,7 @@ export default function DailyChart({ data: legacyData, month, entries: propEntri
   const monthTicks = period === 'month' ? [1, 8, 15, 22, 29].filter((t) => t <= points.length) : undefined;
 
   return (
-    <div className="select-none">
+    <div className="select-none outline-none focus:outline-none">
       {/* Period Selector & Active Inspection Bar */}
       <div className="mb-4 flex items-center justify-between gap-2">
         <div className="inline-flex rounded-full bg-tint p-0.5 border border-line">
@@ -102,7 +101,7 @@ export default function DailyChart({ data: legacyData, month, entries: propEntri
                 setPeriod(p);
                 setSelectedKey(null);
               }}
-              className={`rounded-full px-3 py-1 text-[12px] font-medium capitalize transition-all ${
+              className={`rounded-full px-3 py-1 text-[12px] font-medium capitalize transition-all outline-none focus:outline-none ${
                 period === p
                   ? 'bg-ink text-bg font-semibold shadow-xs'
                   : 'text-ink2 hover:text-ink'
@@ -138,14 +137,15 @@ export default function DailyChart({ data: legacyData, month, entries: propEntri
       <div
         role="img"
         aria-label={`${period} spending. Total: ${rupees(Math.round(total * 100))}.`}
-        className="touch-manipulation"
+        className="touch-manipulation select-none outline-none focus:outline-none focus:ring-0 [&_*]:outline-none [&_*]:focus:outline-none [&_*]:focus:ring-0"
       >
         {mounted ? (
-          <ResponsiveContainer width="100%" height={175}>
+          <ResponsiveContainer width="100%" height={180}>
             <BarChart
               data={points}
-              margin={{ top: 22, right: 4, left: -14, bottom: 0 }}
+              margin={{ top: 26, right: 4, left: -14, bottom: 0 }}
               barCategoryGap={period === 'month' ? '14%' : '20%'}
+              className="outline-none focus:outline-none"
               onClick={(state: any) => {
                 if (state && state.activePayload && state.activePayload.length > 0) {
                   const clicked: PeriodPoint = state.activePayload[0].payload;
@@ -172,7 +172,7 @@ export default function DailyChart({ data: legacyData, month, entries: propEntri
                 tickFormatter={(v) => (v === 0 ? '0' : compact(v))}
               />
               <Tooltip
-                cursor={{ fill: 'var(--tint)' }}
+                cursor={{ fill: 'var(--tint)', stroke: 'none' }}
                 content={<Tip />}
               />
               <Bar
@@ -180,11 +180,15 @@ export default function DailyChart({ data: legacyData, month, entries: propEntri
                 radius={[4, 4, 0, 0]}
                 maxBarSize={maxBarSize}
                 isAnimationActive={false}
-                label={(p: any) => {
-                  const pt = points[p.index];
-                  if (!pt || pt.amount <= 0) return <g />;
+                stroke="none"
+                strokeWidth={0}
+                label={(props: any) => {
+                  const pt: PeriodPoint = props.payload ?? points[props.index];
+                  const val = typeof props.value === 'number' ? props.value : (pt?.amount ?? 0);
+                  if (!pt || val <= 0) return <g />;
+
                   const isSelected = pt.key === selectedKey;
-                  const isPeak = p.index === maxIdx;
+                  const isPeak = val === max && max > 0;
                   // On week or quarter, display amount on all non-zero bars
                   // On month, display on selected bar, peak, or today
                   const shouldShow =
@@ -194,14 +198,15 @@ export default function DailyChart({ data: legacyData, month, entries: propEntri
 
                   return (
                     <text
-                      x={p.x + p.width / 2}
-                      y={p.y - 6}
+                      x={props.x + props.width / 2}
+                      y={props.y - 7}
                       textAnchor="middle"
                       fontSize={10.5}
                       fontWeight={isSelected || isPeak ? 600 : 500}
                       fill="var(--ink)"
+                      className="select-none pointer-events-none"
                     >
-                      {compact(pt.amount)}
+                      {compact(val)}
                     </text>
                   );
                 }}
@@ -221,8 +226,9 @@ export default function DailyChart({ data: legacyData, month, entries: propEntri
                       key={p.key}
                       fill="var(--ink)"
                       fillOpacity={opacity}
-                      className="cursor-pointer transition-opacity"
-                      onClick={() => setSelectedKey((prev) => (prev === p.key ? null : p.key))}
+                      stroke="none"
+                      strokeWidth={0}
+                      className="cursor-pointer transition-opacity outline-none focus:outline-none"
                     />
                   );
                 })}
@@ -230,7 +236,7 @@ export default function DailyChart({ data: legacyData, month, entries: propEntri
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-[175px] w-full skel rounded-xl animate-pulse" />
+          <div className="h-[180px] w-full skel rounded-xl animate-pulse" />
         )}
       </div>
 

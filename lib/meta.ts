@@ -52,12 +52,45 @@ export const CATEGORY_META: Record<AnyCategory, { label: string; icon: LucideIco
   other_income: { label: 'Other income', icon: Wallet },
 };
 
-export const MODE_META: Record<PaymentMode, { label: string; color: string; icon: LucideIcon }> = {
-  cash: { label: 'Cash', color: 'var(--ink)', icon: Banknote },
-  upi: { label: 'UPI', color: 'var(--ink)', icon: QrCode },
-  card: { label: 'Card', color: 'var(--ink)', icon: CreditCard },
-  bank_transfer: { label: 'Bank', color: 'var(--ink)', icon: Building2 },
-  other: { label: 'Other', color: 'var(--muted)', icon: Wallet },
-  unknown: { label: 'Other', color: 'var(--muted)', icon: Wallet },
+export const MODE_META: Record<
+  PaymentMode,
+  { label: string; color: string; bgColor: string; icon: LucideIcon }
+> = {
+  cash: {
+    label: 'Cash',
+    color: '#10b981', // Emerald Green
+    bgColor: 'rgba(16, 185, 129, 0.12)',
+    icon: Banknote,
+  },
+  upi: {
+    label: 'UPI',
+    color: '#8b5cf6', // Violet / Purple
+    bgColor: 'rgba(139, 92, 246, 0.12)',
+    icon: QrCode,
+  },
+  card: {
+    label: 'Card',
+    color: '#f59e0b', // Amber / Orange
+    bgColor: 'rgba(245, 158, 11, 0.12)',
+    icon: CreditCard,
+  },
+  bank_transfer: {
+    label: 'Bank',
+    color: '#3b82f6', // Bank Blue
+    bgColor: 'rgba(59, 130, 246, 0.12)',
+    icon: Building2,
+  },
+  other: {
+    label: 'Other',
+    color: '#64748b', // Slate Neutral
+    bgColor: 'rgba(100, 116, 139, 0.12)',
+    icon: Wallet,
+  },
+  unknown: {
+    label: 'Other',
+    color: '#64748b',
+    bgColor: 'rgba(100, 116, 139, 0.12)',
+    icon: Wallet,
+  },
 };
 

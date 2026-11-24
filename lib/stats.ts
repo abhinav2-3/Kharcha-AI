@@ -8,12 +8,13 @@ import {
   monthLabel,
   monthName,
   monthOf,
+  shiftMonth,
   todayIST,
 } from './format';
 
 /** Entries that count toward totals: parsed, saved, with a valid amount. */
 export const counted = (e: Entry) =>
-  e.amount != null && e.parseStatus !== 'failed' && e.sync !== 'pending' && e.sync !== 'error';
+  e.amount != null && e.parseStatus !== 'failed' && e.sync !== 'error';
 
 export const inMonth = (es: Entry[], m: string) =>
   es.filter((e) => counted(e) && e.spentOn.startsWith(m));
@@ -191,5 +192,109 @@ export function cumulative(es: Entry[], m: string) {
   }
   let run = 0;
   return per.map((v) => (run += v));
+}
+
+export type TrajectoryPeriod = 'week' | 'month' | 'quarter' | 'half_year' | 'full_year';
+
+export function getTrajectoryData(
+  es: Entry[],
+  period: TrajectoryPeriod,
+  currentMonth: string = monthOf(todayIST())
+): PeriodPoint[] {
+  const today = todayIST();
+  const isCurMonth = currentMonth === monthOf(today);
+
+  if (period === 'week') {
+    const ref = isCurMonth ? today : `${currentMonth}-01`;
+    return byWeek(es, ref);
+  }
+
+  if (period === 'month') {
+    const n = daysInMonth(currentMonth);
+    const mName = monthName(currentMonth).slice(0, 3);
+    const buckets = [
+      { key: `${currentMonth}-w1`, label: 'wk 1', fullDate: `1-7 ${mName}`, start: 1, end: 7 },
+      { key: `${currentMonth}-w2`, label: 'wk 2', fullDate: `8-14 ${mName}`, start: 8, end: 14 },
+      { key: `${currentMonth}-w3`, label: 'wk 3', fullDate: `15-21 ${mName}`, start: 15, end: 21 },
+      { key: `${currentMonth}-w4`, label: 'wk 4', fullDate: `22-${n} ${mName}`, start: 22, end: n },
+    ];
+
+    const curDay = dayOfMonth(today);
+    return buckets.map((b) => {
+      let amount = 0;
+      for (const e of es) {
+        if (e.type === 'expense' && counted(e) && e.spentOn.startsWith(currentMonth)) {
+          const d = dayOfMonth(e.spentOn);
+          if (d >= b.start && d <= b.end) {
+            amount += (e.amount ?? 0) / 100;
+          }
+        }
+      }
+      const isCurrent = isCurMonth && curDay >= b.start && curDay <= b.end;
+      return {
+        key: b.key,
+        label: b.label,
+        fullDate: b.fullDate,
+        amount,
+        isCurrent,
+        isToday: isCurrent,
+      };
+    });
+  }
+
+  if (period === 'quarter') {
+    return byQuarter(es, currentMonth);
+  }
+
+  if (period === 'half_year') {
+    const months = [
+      shiftMonth(currentMonth, -5),
+      shiftMonth(currentMonth, -4),
+      shiftMonth(currentMonth, -3),
+      shiftMonth(currentMonth, -2),
+      shiftMonth(currentMonth, -1),
+      currentMonth,
+    ];
+    return months.map((m) => {
+      let amount = 0;
+      for (const e of es) {
+        if (e.type === 'expense' && counted(e) && e.spentOn.startsWith(m)) {
+          amount += (e.amount ?? 0) / 100;
+        }
+      }
+      return {
+        key: m,
+        label: monthName(m).slice(0, 3).toLowerCase(),
+        fullDate: monthLabel(m),
+        amount,
+        isCurrent: m === currentMonth,
+        isToday: m === monthOf(today),
+      };
+    });
+  }
+
+  // full_year (12 months of the calendar year of currentMonth)
+  const [yearStr] = currentMonth.split('-');
+  const y = Number(yearStr);
+  const curMonth = monthOf(today);
+  const points: PeriodPoint[] = [];
+  for (let mo = 1; mo <= 12; mo++) {
+    const mStr = `${y}-${String(mo).padStart(2, '0')}`;
+    let amount = 0;
+    for (const e of es) {
+      if (e.type === 'expense' && counted(e) && e.spentOn.startsWith(mStr)) {
+        amount += (e.amount ?? 0) / 100;
+      }
+    }
+    points.push({
+      key: mStr,
+      label: monthName(mStr).slice(0, 3).toLowerCase(),
+      fullDate: monthLabel(mStr),
+      amount,
+      isCurrent: mStr === currentMonth,
+      isToday: mStr === curMonth,
+    });
+  }
+  return points;
 }
 

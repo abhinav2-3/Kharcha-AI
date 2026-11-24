@@ -1,4 +1,4 @@
-import { byWeek, byMonth, byQuarter } from '../lib/stats';
+import { byWeek, byMonth, byQuarter, getTrajectoryData } from '../lib/stats';
 import type { Entry } from '../lib/types';
 
 function createMockEntry(spentOn: string, amountPaise: number, type: 'expense' | 'income' = 'expense'): Entry {
@@ -81,6 +81,35 @@ console.log('Testing Period Aggregations in lib/stats.ts...');
     throw new Error(`Expected Dec: 500, got ${quarter[2].label}: ${quarter[2].amount}`);
   }
   console.log('✓ byQuarter passed (Oct, Nov, Dec accurately grouped and summed)');
+}
+
+// 4. Test getTrajectoryData across all 5 periods
+{
+  const month = '2026-11';
+  const entries: Entry[] = [
+    createMockEntry('2026-11-05', 50000), // 500 in wk 1 (days 1-7)
+    createMockEntry('2026-11-12', 30000), // 300 in wk 2 (days 8-14)
+    createMockEntry('2026-05-10', 40000), // 400 in May
+  ];
+
+  const trajWeek = getTrajectoryData(entries, 'week', month);
+  if (trajWeek.length !== 7) throw new Error(`Expected 7 days for traj week, got ${trajWeek.length}`);
+
+  const trajMonth = getTrajectoryData(entries, 'month', month);
+  if (trajMonth.length !== 4) throw new Error(`Expected 4 weeks for traj month, got ${trajMonth.length}`);
+  if (trajMonth[0].amount !== 500) throw new Error(`Expected wk 1 to be 500, got ${trajMonth[0].amount}`);
+  if (trajMonth[1].amount !== 300) throw new Error(`Expected wk 2 to be 300, got ${trajMonth[1].amount}`);
+
+  const trajQuarter = getTrajectoryData(entries, 'quarter', month);
+  if (trajQuarter.length !== 3) throw new Error(`Expected 3 months for traj quarter, got ${trajQuarter.length}`);
+
+  const trajHalfYear = getTrajectoryData(entries, 'half_year', month);
+  if (trajHalfYear.length !== 6) throw new Error(`Expected 6 months for traj half year, got ${trajHalfYear.length}`);
+
+  const trajFullYear = getTrajectoryData(entries, 'full_year', month);
+  if (trajFullYear.length !== 12) throw new Error(`Expected 12 months for traj full year, got ${trajFullYear.length}`);
+
+  console.log('✓ getTrajectoryData passed for all 5 periods (week, month, quarter, half_year, full_year)');
 }
 
 console.log('All period aggregation tests passed successfully!');
