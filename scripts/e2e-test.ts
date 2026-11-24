@@ -154,8 +154,10 @@ async function runEndToEndVerification() {
   assert(!validatePreLLMInput('??????').valid, 'Punctuation-only rejected before LLM');
   assert(!validatePreLLMInput('aaaaaaaaaaaaaaaaaaaaa').valid, 'Repetitive spam rejected before LLM');
 
-  assert(RATE_LIMIT_CONFIG.MINUTE_LIMIT === 6, 'Minute limit configured to 6 req/min');
-  assert(RATE_LIMIT_CONFIG.DAILY_LIMIT === 50, 'Daily limit configured to 50 req/day');
+  assert(RATE_LIMIT_CONFIG.GUEST.MINUTE_LIMIT === 6, 'Guest minute limit configured to 6 req/min');
+  assert(RATE_LIMIT_CONFIG.GUEST.DAILY_LIMIT === 35, 'Guest daily limit configured to 35 req/day');
+  assert(RATE_LIMIT_CONFIG.USER.MINUTE_LIMIT === 10, 'User minute limit configured to 10 req/min');
+  assert(RATE_LIMIT_CONFIG.USER.DAILY_LIMIT === 75, 'User daily limit configured to 75 req/day');
   console.log('✓ Pre-LLM token saver & rate limit configs passed.\n');
 
   console.log('=== All Kharcha Backend Tests Passed Successfully! ===');

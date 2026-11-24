@@ -2,10 +2,26 @@ import { connectDB } from '@/lib/db';
 import { RateLimit } from '@/models/RateLimit';
 
 export const RATE_LIMIT_CONFIG = {
+  // Base window settings
   MINUTE_WINDOW_SECONDS: 60,
-  MINUTE_LIMIT: 6, // 6 AI requests per minute per user
+  MINUTE_LIMIT: 6,
   DAILY_WINDOW_SECONDS: 86400,
-  DAILY_LIMIT: 50, // 50 AI requests per 24 hours per user
+  DAILY_LIMIT: 35,
+
+  GUEST: {
+    MINUTE_LIMIT: 6,
+    MINUTE_WINDOW_SECONDS: 60,
+    DAILY_LIMIT: 35,
+    DAILY_WINDOW_SECONDS: 86400,
+    RETRY_AFTER_MINUTE: 20,
+  },
+  USER: {
+    MINUTE_LIMIT: 10,
+    MINUTE_WINDOW_SECONDS: 60,
+    DAILY_LIMIT: 75,
+    DAILY_WINDOW_SECONDS: 86400,
+    RETRY_AFTER_MINUTE: 15,
+  },
 };
 
 export interface RateLimitResult {
@@ -20,13 +36,18 @@ export interface RateLimitResult {
 /**
  * Checks if a user has exceeded their minute or daily AI parsing limit.
  * Uses a single fast MongoDB aggregation.
+ * Supports tiered quotas: Guests (35/day, 6/min) vs Signed-in Users (75/day, 10/min).
  */
-export async function checkRateLimit(userId: string): Promise<RateLimitResult> {
+export async function checkRateLimit(
+  userId: string,
+  isGuest: boolean = true
+): Promise<RateLimitResult> {
   await connectDB();
 
+  const cfg = isGuest ? RATE_LIMIT_CONFIG.GUEST : RATE_LIMIT_CONFIG.USER;
   const now = Date.now();
-  const oneMinuteAgo = new Date(now - RATE_LIMIT_CONFIG.MINUTE_WINDOW_SECONDS * 1000);
-  const oneDayAgo = new Date(now - RATE_LIMIT_CONFIG.DAILY_WINDOW_SECONDS * 1000);
+  const oneMinuteAgo = new Date(now - cfg.MINUTE_WINDOW_SECONDS * 1000);
+  const oneDayAgo = new Date(now - cfg.DAILY_WINDOW_SECONDS * 1000);
 
   // Single aggregation query to fetch both minute and daily counts
   const [counts] = await RateLimit.aggregate([
@@ -53,25 +74,26 @@ export async function checkRateLimit(userId: string): Promise<RateLimitResult> {
   const dayCount = counts?.dayCount || 0;
 
   // 1. Minute burst limit check
-  if (minuteCount >= RATE_LIMIT_CONFIG.MINUTE_LIMIT) {
+  if (minuteCount >= cfg.MINUTE_LIMIT) {
     return {
       allowed: false,
       reason: 'minute',
-      retryAfterSeconds: 30,
-      message: "You're logging expenses too fast. Please wait 30 seconds before trying again.",
+      retryAfterSeconds: cfg.RETRY_AFTER_MINUTE,
+      message: `You're logging expenses too fast. Please wait ${cfg.RETRY_AFTER_MINUTE} seconds before trying again.`,
       minuteCount,
       dayCount,
     };
   }
 
   // 2. Daily cap check
-  if (dayCount >= RATE_LIMIT_CONFIG.DAILY_LIMIT) {
+  if (dayCount >= cfg.DAILY_LIMIT) {
     return {
       allowed: false,
       reason: 'day',
       retryAfterSeconds: 3600,
-      message:
-        'Daily AI parsing limit reached (50/day). You can still log or edit entries manually using the plus button.',
+      message: isGuest
+        ? `Daily AI parsing limit reached (${cfg.DAILY_LIMIT}/day). Sign in with Google to get 75/day, or log entries manually.`
+        : `Daily AI parsing limit reached (${cfg.DAILY_LIMIT}/day). You can still log or edit entries manually using the plus button.`,
       minuteCount,
       dayCount,
     };

@@ -96,11 +96,8 @@ export default function InsightsPage() {
       ) : (
         <>
           {/* Fluid Monochrome Spending Wave */}
-          <Section
-            title="Spending Trajectory"
-            aside={curSpent > 0 ? `Total: ${rupees(curSpent)}` : undefined}
-          >
-            <WaveChart data={waveData} currentMonth={month} entries={entries} />
+          <Section title="Spending Trajectory">
+            <WaveChart currentMonth={month} entries={entries} />
           </Section>
 
           {/* Category Breakdown */}

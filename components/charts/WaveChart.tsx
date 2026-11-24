@@ -12,12 +12,12 @@ interface WaveChartProps {
   entries?: Entry[];
 }
 
-const PERIOD_LABELS: Record<TrajectoryPeriod, { button: string; avgLabel: string; totalLabel: string }> = {
-  week: { button: 'Week', avgLabel: 'Daily Avg', totalLabel: 'This Week' },
-  month: { button: 'Month', avgLabel: 'Weekly Avg', totalLabel: 'This Month' },
-  quarter: { button: 'Quarter', avgLabel: 'Monthly Avg', totalLabel: 'This Quarter' },
-  half_year: { button: 'Half Year', avgLabel: '6-Mo Avg', totalLabel: '6-Month Total' },
-  full_year: { button: 'Full Year', avgLabel: 'Monthly Avg', totalLabel: 'Annual Total' },
+const PERIOD_LABELS: Record<TrajectoryPeriod, { button: string; avgLabel: string }> = {
+  week: { button: 'Week', avgLabel: 'Daily Avg' },
+  month: { button: 'Month', avgLabel: 'Weekly Avg' },
+  quarter: { button: 'Quarter', avgLabel: 'Monthly Avg' },
+  half_year: { button: 'Half Year', avgLabel: '6-Mo Avg' },
+  full_year: { button: 'Full Year', avgLabel: 'Monthly Avg' },
 };
 
 function getSplinePath(points: { x: number; y: number }[]): string {
@@ -45,8 +45,9 @@ export default function WaveChart({ data: propData, currentMonth, entries: propE
   const entries = propEntries ?? storeEntries;
 
   const [period, setPeriod] = useState<TrajectoryPeriod>('half_year');
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
-  // Compute period data points
+  // Compute period data points dynamically
   const data: PeriodPoint[] = useMemo(() => {
     if (!entries || entries.length === 0) {
       if (propData && propData.length > 0) return propData;
@@ -54,17 +55,24 @@ export default function WaveChart({ data: propData, currentMonth, entries: propE
     return getTrajectoryData(entries || [], period, currentMonth);
   }, [entries, period, currentMonth, propData]);
 
-  // Find index of current month/point in data, default to last active point
-  const defaultIdx = useMemo(() => {
-    const found = data.findIndex((d) => d.isCurrent || d.key === currentMonth);
-    return found !== -1 ? found : Math.max(0, data.length - 1);
-  }, [data, currentMonth]);
+  // Compute the active point index (prioritizing current month / latest data)
+  const activeIdx = useMemo(() => {
+    if (selectedKey) {
+      const idx = data.findIndex((d) => d.key === selectedKey);
+      if (idx !== -1) return idx;
+    }
+    // Default to the point matching currentMonth or marked isCurrent
+    const curIdx = data.findIndex((d) => d.isCurrent || d.key === currentMonth);
+    if (curIdx !== -1) return curIdx;
 
-  const [activeIdx, setActiveIdx] = useState<number>(defaultIdx);
+    // Fallback to latest point with spend or last point
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (data[i].amount > 0) return i;
+    }
+    return Math.max(0, data.length - 1);
+  }, [selectedKey, data, currentMonth]);
 
-  // Update activeIdx when period changes if out of bounds
-  const safeActiveIdx = activeIdx >= 0 && activeIdx < data.length ? activeIdx : defaultIdx;
-  const activePoint = data[safeActiveIdx] ?? data[data.length - 1];
+  const activePoint = data[activeIdx] ?? data[data.length - 1];
 
   const max = Math.max(...data.map((d) => d.amount), 0);
   const total = data.reduce((acc, d) => acc + d.amount, 0);
@@ -121,8 +129,8 @@ export default function WaveChart({ data: propData, currentMonth, entries: propE
 
   return (
     <div className="select-none outline-none focus:outline-none">
-      {/* Time Period Selector */}
-      <div className="mb-3.5 flex items-center justify-between gap-2">
+      {/* Time Period Selector & Benchmark Average */}
+      <div className="mb-4 flex items-center justify-between gap-2">
         <div className="inline-flex rounded-full bg-tint p-0.5 border border-line overflow-x-auto no-scrollbar max-w-full">
           {(['week', 'month', 'quarter', 'half_year', 'full_year'] as const).map((p) => (
             <button
@@ -130,7 +138,7 @@ export default function WaveChart({ data: propData, currentMonth, entries: propE
               type="button"
               onClick={() => {
                 setPeriod(p);
-                setActiveIdx(-1);
+                setSelectedKey(null);
               }}
               className={`rounded-full px-2.5 py-1 text-[11.5px] font-medium whitespace-nowrap transition-all outline-none focus:outline-none ${
                 period === p
@@ -143,41 +151,30 @@ export default function WaveChart({ data: propData, currentMonth, entries: propE
           ))}
         </div>
 
-        <div className="text-right shrink-0">
-          <span className="text-[10.5px] font-medium text-ink2 block">{periodMeta.avgLabel}</span>
-          <span className="num text-[12.5px] font-semibold text-ink2">
-            {rupees(Math.round(avg * 100))}
-          </span>
-        </div>
+        {avg > 0 && (
+          <div className="text-right shrink-0">
+            <span className="text-[11px] font-medium text-ink2 block">{periodMeta.avgLabel}</span>
+            <span className="num text-[13px] font-semibold text-ink2">
+              {rupees(Math.round(avg * 100))}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Active Point Display */}
-      <div className="mb-2.5 flex items-baseline justify-between px-1">
-        <div>
-          <span className="text-[12px] font-medium text-ink2 block capitalize">
-            {activePoint?.fullDate ?? 'Selected Period'}
+      {/* Active Point Display (Clean & Minimalist: Date + Amount only) */}
+      <div className="mb-3 px-1">
+        <span className="text-[12px] font-medium text-ink2 block capitalize">
+          {activePoint?.fullDate ?? 'Selected Period'}
+        </span>
+        <div className="flex items-baseline gap-2 mt-0.5">
+          <span className="num text-[28px] font-bold tracking-tight text-ink">
+            {rupees(Math.round((activePoint?.amount ?? 0) * 100))}
           </span>
-          <div className="flex items-baseline gap-2 mt-0.5">
-            <span className="num text-[26px] font-bold tracking-tight text-ink">
-              {rupees(Math.round((activePoint?.amount ?? 0) * 100))}
+          {avg > 0 && activePoint && activePoint.amount > 0 && diffAvg !== 0 && (
+            <span className="text-[11.5px] font-medium text-ink2">
+              {diffAvg > 0 ? `+${diffAvg}% vs avg` : `${diffAvg}% vs avg`}
             </span>
-            {avg > 0 && activePoint && (
-              <span className="text-[11px] font-medium text-ink2">
-                {diffAvg === 0
-                  ? 'matches avg'
-                  : diffAvg > 0
-                  ? `+${diffAvg}% vs avg`
-                  : `${diffAvg}% vs avg`}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="text-right">
-          <span className="text-[10.5px] font-medium text-ink2 block">{periodMeta.totalLabel}</span>
-          <span className="num text-[13px] font-semibold text-ink">
-            {rupees(Math.round(total * 100))}
-          </span>
+          )}
         </div>
       </div>
 
@@ -225,7 +222,7 @@ export default function WaveChart({ data: propData, currentMonth, entries: propE
 
           {/* Points & Touch Targets */}
           {points.map((pt, i) => {
-            const isActive = i === safeActiveIdx;
+            const isActive = i === activeIdx;
             const targetWidth = Math.max(28, plotWidth / points.length);
 
             return (
@@ -239,8 +236,8 @@ export default function WaveChart({ data: propData, currentMonth, entries: propE
                   fill="transparent"
                   stroke="none"
                   className="outline-none focus:outline-none"
-                  onClick={() => setActiveIdx(i)}
-                  onMouseEnter={() => setActiveIdx(i)}
+                  onClick={() => setSelectedKey(pt.data.key)}
+                  onMouseEnter={() => setSelectedKey(pt.data.key)}
                 />
 
                 {/* Node Ring on Wave */}

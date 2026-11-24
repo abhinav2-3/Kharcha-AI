@@ -65,8 +65,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Rate Limit Check (6 req/min, 50 req/day per user)
-    const rateLimitResult = await checkRateLimit(userId);
+    // 3. Rate Limit Check (Guest: 6/min, 35/day; Signed-In: 10/min, 75/day)
+    const isGuest = !sessionUser?.googleSub;
+    const rateLimitResult = await checkRateLimit(userId, isGuest);
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         {
