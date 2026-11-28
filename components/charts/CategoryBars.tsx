@@ -1,5 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import { ChevronRight } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { byCategory } from '@/lib/stats';
 import { CATEGORY_META } from '@/lib/meta';
@@ -28,7 +29,7 @@ export default function CategoryBars({ rows, limit }: Props) {
                 setFilter({ kind: 'category', category: r.category });
                 router.push('/history');
               }}
-              className="flex w-full items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-tint/60 active:bg-tint"
+              className="group flex w-full items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-tint/60 active:bg-tint"
             >
               <CategoryChip category={r.category} />
               <div className="min-w-0 flex-1">
@@ -52,6 +53,10 @@ export default function CategoryBars({ rows, limit }: Props) {
                   </span>
                 </div>
               </div>
+              <ChevronRight
+                size={16}
+                className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5 group-active:translate-x-1"
+              />
             </button>
           </li>
         );

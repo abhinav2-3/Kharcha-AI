@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface Props {
+  id?: string;
   title: string;
   aside?: string;
   href?: string;
@@ -10,9 +11,9 @@ interface Props {
   children: ReactNode;
 }
 
-export default function Section({ title, aside, href, pad = true, children }: Props) {
+export default function Section({ id, title, aside, href, pad = true, children }: Props) {
   return (
-    <section className="mt-7">
+    <section id={id} className="mt-7">
       <div className="flex items-center justify-between px-5 pb-2">
         <h2 className="text-[17px] font-semibold tracking-tight text-ink">{title}</h2>
         {href ? (

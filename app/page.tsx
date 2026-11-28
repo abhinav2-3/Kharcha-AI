@@ -1,6 +1,7 @@
 'use client';
-import { useMemo } from 'react';
-import { ArrowDownRight, ArrowUpRight, Sparkles } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import Link from 'next/link';
+import { ArrowDownRight, ArrowUpRight, ChevronRight, Plus, Sparkles } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { byCategory, byDay, inMonth, totals } from '@/lib/stats';
 import {
@@ -20,6 +21,7 @@ import EntryRow from '@/components/EntryRow';
 import CategoryBars from '@/components/charts/CategoryBars';
 import HomeClaimNudge from '@/components/HomeClaimNudge';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+import AddIncomeSheet from '@/components/AddIncomeSheet';
 
 const DailyChart = dynamic(() => import('@/components/charts/DailyChart'), {
   ssr: false,
@@ -36,6 +38,7 @@ const ENGLISH_QUICK_CHIPS = [
 
 export default function HomePage() {
   const { entries, sorted, loaded, month, setDraft, serverStats, user } = useStore();
+  const [showAddIncome, setShowAddIncome] = useState(false);
   const today = todayIST();
   const isCurrent = month === monthOf(today);
   const upto = isCurrent ? dayOfMonth(today) : daysInMonth(month);
@@ -117,38 +120,65 @@ export default function HomePage() {
           <MonthSwitcher />
         </div>
 
-        <p className="mt-6 text-[14px] text-ink2 font-medium">
-          Spent in {currentMonthName}
-        </p>
-
-        {loaded ? (
-          <p
-            className="num mt-1 text-[52px] font-bold leading-[1.05] tracking-[-0.04em] text-ink"
-            aria-live="polite"
-          >
-            {rupees(Math.round(hero))}
-          </p>
-        ) : (
-          <div className="skel mt-2 h-[58px] w-56" />
-        )}
-
-        <div className="mt-2 min-h-[28px]">
-          {loaded && hasPrev && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-line bg-tint px-3 py-0.5 text-[12.5px] font-medium text-ink2">
-              {delta <= 0 ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
-              {rupees(Math.abs(delta))} {delta <= 0 ? 'less' : 'more'} than {monthName(prevMonth)}{' '}
-              {isCurrent ? 'so far' : ''}
+        {/* Clickable Spent Section -> Navigates to Insights (Spending by Category) */}
+        <Link
+          href="/insights#spending-by-category"
+          aria-label={`Spent in ${currentMonthName}: ${rupees(Math.round(hero))}. Click to view spending by category.`}
+          className="group mt-6 block rounded-2xl transition-all active:scale-[0.99] cursor-pointer"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[14px] text-ink2 font-medium">
+              Spent in {currentMonthName}
             </span>
-          )}
-        </div>
+            <span className="flex items-center gap-0.5 text-[12px] font-medium text-ink2 group-hover:text-ink transition-colors">
+              <span>Category breakdown</span>
+              <ChevronRight
+                size={14}
+                className="transition-transform group-hover:translate-x-0.5"
+              />
+            </span>
+          </div>
 
-        {/* Income & Balance Summary */}
+          {loaded ? (
+            <p
+              className="num mt-1 text-[52px] font-bold leading-[1.05] tracking-[-0.04em] text-ink"
+              aria-live="polite"
+            >
+              {rupees(Math.round(hero))}
+            </p>
+          ) : (
+            <div className="skel mt-2 h-[58px] w-56" />
+          )}
+
+          <div className="mt-2 min-h-[28px]">
+            {loaded && hasPrev && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-line bg-tint px-3 py-0.5 text-[12.5px] font-medium text-ink2">
+                {delta <= 0 ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
+                {rupees(Math.abs(delta))} {delta <= 0 ? 'less' : 'more'} than {monthName(prevMonth)}{' '}
+                {isCurrent ? 'so far' : ''}
+              </span>
+            )}
+          </div>
+        </Link>
+
+        {/* Income & Balance Summary (Non-clickable cards, Income has dedicated '+' button) */}
         <dl className="mt-5 grid grid-cols-2 border-t border-line/70 pt-4">
-          <div>
-            <dt className="text-[12.5px] text-ink2 font-medium">Income</dt>
-            <dd className="num mt-0.5 text-[17px] font-semibold text-ink">
-              {loaded ? rupees(income) : '—'}
-            </dd>
+          <div className="flex items-center justify-between pr-4">
+            <div>
+              <dt className="text-[12.5px] text-ink2 font-medium">Income</dt>
+              <dd className="num mt-0.5 text-[17px] font-semibold text-ink">
+                {loaded ? rupees(income) : '—'}
+              </dd>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddIncome(true)}
+              aria-label="Add income"
+              title="Add income"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line bg-surface text-ink hover:border-ink hover:bg-tint active:scale-95 transition-all shadow-2xs"
+            >
+              <Plus size={16} strokeWidth={2} />
+            </button>
           </div>
           <div className="border-l border-line/70 pl-5">
             <dt className="text-[12.5px] text-ink2 font-medium">Remaining Balance</dt>
@@ -260,6 +290,12 @@ export default function HomePage() {
           </Section>
         </>
       )}
+
+      {/* Add Income Drawer Modal */}
+      <AddIncomeSheet
+        isOpen={showAddIncome}
+        onClose={() => setShowAddIncome(false)}
+      />
     </div>
   );
 }

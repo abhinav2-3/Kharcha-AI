@@ -1,5 +1,5 @@
 'use client';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useStore } from '@/lib/store';
 import { byCategory, byMode, inMonth, totals } from '@/lib/stats';
 import { monthLabel, monthName, rupees, shiftMonth } from '@/lib/format';
@@ -73,6 +73,15 @@ export default function InsightsPage() {
 
   const currentMonthName = monthName(month);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === '#spending-by-category') {
+      const el = document.getElementById('spending-by-category');
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+      }
+    }
+  }, [loaded, cats.length]);
+
   return (
     <div className="pb-8">
       {/* Header */}
@@ -102,7 +111,7 @@ export default function InsightsPage() {
 
           {/* Category Breakdown */}
           {cats.length > 0 && (
-            <Section title="Spending by Category" pad={false}>
+            <Section id="spending-by-category" title="Spending by Category" aside="Tap to view history" pad={false}>
               <CategoryBars rows={cats} />
             </Section>
           )}
